@@ -1,0 +1,816 @@
+#+TITLE: Config
+
+* General Configuration
+** Utility Functions
+Theses are declared first they can be used throughout the config file
+
+This method takes a shell-style $PATH and splits them into a list of separate strings per path
+then sets the path environment variable PATH inside emacs to the list of strings
+#+BEGIN_SRC emacs-lisp
+  (defun add-path-string-to-exec-path (str)
+    "Add all paths in STR seperated by colons to the exec path."
+    (mapcar (lambda (s) (setenv "PATH" (concat s))) (split-string str ":")))
+#+END_SRC
+
+This method switches between relative and regular line numbering
+#+BEGIN_SRC emacs-lisp
+  ;;;###autoload
+  (defun relative-line-numbers-toggle ()
+    "Allow for toggling relative line number mode without re-initialising line number mode."
+    (interactive)
+    (setq display-line-numbers (if (eq display-line-numbers t) 'relative t)))
+#+END_SRC
+
+This macro defines a keybind 'layer' similar to spacemacs where you hit the leader key then a key for
+a collection of keybinds
+#+BEGIN_SRC emacs-lisp
+  (cl-defmacro create-leader-layer (name &rest params &key key (leader leader-key) (states '(normal)) &allow-other-keys)
+    "A wrapper for `general-define-key' for simpler definition of spacemacs-style layer keybindings using `leader-key' `key' to acces a group of keybindings
+  `leader-key' can be specified per invocation or by setting the global variable with the same name. a required input is `key' which specified which key comes
+  after leader in order to acess the bindings specified in this macro"
+    (declare (indent defun))
+    (let (
+	  (other-keys (cl-loop for (k v) on params by 'cddr
+			       unless (or (eq k :which-key) (eq k :key) (stringp k))
+			       collect k
+			       and collect v))
+	  (maps (cl-loop for (k v)  on params by 'cddr
+			 if (stringp k)
+			 collect (concat key k)
+			 and collect v)))
+      `(general-define-key
+	:prefix ,leader
+	:states ',states
+	,key '(:ignore t :which-key ,(symbol-name name))
+	,@other-keys
+	,@maps)))
+#+END_SRC
+** Use-Package Config
+Set :ensure t for all use-package calls
+#+BEGIN_SRC emacs-lisp
+  (setq use-package-always-ensure t)
+#+END_SRC
+** Utility packages
+Setup packages used throughout the configuration which should be defined early on
+
+Setup general and hydra to make defining keybinds easier
+#+BEGIN_SRC emacs-lisp
+  (use-package general
+    :after evil
+    :config (general-evil-setup t))
+
+  (use-package hydra
+    :defer 1)
+#+END_SRC
+
+Show which keybindings are asigned to what
+#+BEGIN_SRC emacs-lisp
+(use-package which-key
+  :diminish
+  :init
+  (which-key-mode))
+#+END_SRC
+** Mac Specific Config
+
+This snippet sets the path in mac so that Emacs can find mac programs on the machine
+TODO: Investigate if I can remove this once my config is in nix
+#+BEGIN_SRC emacs-lisp
+  (when (memq window-system '(mac ns x))
+    ;; set exec path for projectile and stuff
+    (add-path-string-to-exec-path
+     "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:usr/local/opt/llvm/bin:/usr/bin")
+    (use-package exec-path-from-shell
+      :config
+      (exec-path-from-shell-initialize)))
+    #+END_SRC
+
+** General Variables/Constants
+Define constants
+#+BEGIN_SRC emacs-lisp
+  (defconst user-secrets-directory (concat user-emacs-directory "private/")
+    "Dir ignored by git for, passwords, private keys etc.")
+
+  (defconst custom-file (concat user-emacs-directory "config/custom.el")
+    "File to store emacs custom variables.")
+
+  (defconst user-backups-directory (concat user-emacs-directory "backups/")
+    "Directory for storing all the emacs backup files")
+
+  (defconst user-snippets-directory (concat user-emacs-directory "snippets/")
+    "Directory for yasnippet code snippet files")
+
+  (defconst leader-key "SPC"
+    "vim-style leader key for leader keybindings")
+#+END_SRC
+
+Switch mac keybinds so set super -> meta and meta -> super
+#+BEGIN_SRC emacs-lisp
+  (setq mac-option-modifier 'super)
+  (setq mac-command-modifier 'meta)
+#+END_SRC
+** Emacs Settings
+Replace all yes and no prompts with y/n prompts
+#+BEGIN_SRC emacs-lisp
+(fset 'yes-or-no-p 'y-or-n-p)
+#+END_SRC
+
+Put custom variables into a differnt file than init.el
+#+BEGIN_SRC emacs-lisp
+(when (file-exists-p  custom-file)
+  (load custom-file))
+#+END_SRC
+
+Set emacs backup file settings
+#+BEGIN_SRC emacs-lisp
+  (setq create-lockfiles nil
+	make-backup-files nil
+	backup-by-copying t
+	backup-directory-alist '(user-backups-directory)
+	delete-old-versions t
+	ring-bell-function 'ignore
+	kept-new-versions 6
+	kept-old-versions 2
+	version-control t)
+#+END_SRC
+*** Keybinds
+#+BEGIN_SRC emacs-lisp
+  (global-set-key (kbd "C-M-u") 'universal-argument)
+  (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
+#+END_SRC
+** Font Settings
+Set default font to [[https://sourcefoundry.org/hack/][hack]] and the cursor type to bar
+#+BEGIN_SRC emacs-lisp
+  (set-face-attribute 'default nil :font "Hack-14")
+
+  (setq-default cursor-type 'bar)
+#+END_SRC
+** Window Settings
+Split windows for popups horizontally
+#+BEGIN_SRC emacs-lisp
+(setq split-width-threshold nil)
+#+END_SRC
+*** Functions
+These methods split the windows horizontally or vertically and then select the newly created windows.
+#+BEGIN_SRC emacs-lisp
+  (defun split-window-and-follow-horizontally ()
+    "Split window right and select new window."
+    (interactive)
+    (split-window-right)
+    (other-window 1))
+
+  (defun split-window-and-follow-vertically ()
+    "Split window below and select new window."
+    (interactive)
+    (split-window-below)
+    (other-window 1))
+#+END_SRC
+
+*** Keybinds
+#+BEGIN_SRC emacs-lisp
+  (create-leader-layer windows
+    :key "w"
+    "v" 'split-window-and-follow-horizontally
+    "h" 'split-window-and-follow-vertically
+    "d" 'delete-window
+    "=" 'balance-windows
+    "R" 'rotate-windows)
+
+  (general-define-key
+   :states '(normal visual)
+
+   ;; window navigation
+   "C-j" 'evil-window-down
+   "C-k" 'evil-window-up
+   "C-l" 'evil-window-right
+   "C-h" 'evil-window-left
+
+   ;; window resize bindings
+   "s-j" '(lambda () (interactive) (evil-window-decrease-height 5))
+   "s-k" '(lambda () (interactive) (evil-window-increase-height 5))
+   "s-h" '(lambda () (interactive) (evil-window-decrease-width 5))
+   "s-l" '(lambda () (interactive) (evil-window-increase-width 5)))
+#+END_SRC
+** Buffer Settings
+Disable Completions buffer
+#+BEGIN_SRC emacs-lisp
+  (add-hook 'minibuffer-exit-hook
+	    '(lambda ()
+	       (let ((buffer "*Completions*"))
+		 (and (get-buffer buffer)
+		      (kill-buffer buffer)))))
+#+END_SRC
+
+Always kill compilation buffer and scroll to the latest line of output
+#+BEGIN_SRC emacs-lisp
+  (setq-default
+   compilation-always-kill t
+   compilation-scroll-output t)
+#+END_SRC
+
+Setup scratch buffer
+#+BEGIN_SRC emacs-lisp
+  (defvar scratch-mode 'lisp-interaction-mode
+    "Default major mode of the scratch buffer.")
+#+END_SRC
+*** Functions
+Define buffer utility functions
+#+BEGIN_SRC emacs-lisp
+    (defun new-empty-buffer ()
+      "Create a new buffer called untitled(<n>)."
+      (interactive)
+      (let ((newbuf (generate-new-buffer-name "untitled")))
+	(switch-to-buffer newbuf)))
+
+    (defun switch-to-scratch-buffer ()
+      "Switch to the `*scratch*' buffer or create it if needed."
+      (interactive)
+      (let ((exists (get-buffer "*scratch*")))
+	(switch-to-buffer (get-buffer-create "*scratch*"))
+	(when (and (not exists)
+		   (not (eq major-mode scratch-mode))
+		   (fboundp scratch-mode))
+	  (funcall scratch-mode))))
+#+END_SRC
+
+Define predicate so next and previous buffers skip emacs special buffers
+#+BEGIN_SRC emacs-lisp
+  (defun emacs-special-buffer-name-p (name)
+    "If NAME is surrounded by asterisks return t otherwise return nil."
+    (if (string-match-p "\\*.*\\*" name)
+	t))
+
+  (defvar my-skippable-buffers '("Shell-popup")
+    "Buffer names ignored by `next-buffer' and `previous-buffer'.")
+
+  (defun my-buffer-predicate (buffer)
+    "Tell `next-buffer' and `previous-buffer' to skip the BUFFER if it's name is listed in `my-skippable-buffers' or is an EMACS special buffer."
+    (if (or (emacs-special-buffer-name-p (buffer-name buffer)) (member (buffer-name buffer) my-skippable-buffers))
+	nil
+      t))
+  (set-frame-parameter nil 'buffer-predicate 'my-buffer-predicate)
+#+END_SRC
+*** Keybinds
+#+BEGIN_SRC emacs-lisp
+  (create-leader-layer buffers
+    :key "b"
+    "b" '(lambda () (interactive) (bind-for-projectile 'consult-project-buffer 'consult-buffer))
+    "B" 'consult-buffer
+    "s" 'switch-to-scratch-buffer
+    "N" 'new-empty-buffer
+    "d" 'kill-current-buffer
+    "n" 'next-buffer
+    "p" 'previous-buffer)
+#+END_SRC
+
+**** TODO Look into Intellij style jumping
+So anytime a I jump to a new file or a new part of a file or a function definition etc save that
+so I can jump back and forth between these states instead of just though buffers.
+
+For now, bind next and pervious buffer functions
+#+BEGIN_SRC emacs-lisp
+  (general-define-key
+   :states '(normal visual)
+   "M-]" 'next-buffer :which-key "next buffer"
+   "M-[" 'previous-buffer :which-key "previous buffer")
+#+END_SRC
+** Search Settings
+Everything related to finding files/parts of a file
+
+*** Keybinds
+Find file keybindings
+#+BEGIN_SRC emacs-lisp
+  (create-leader-layer files
+    :key "f"
+    "F" 'consult-fd
+    "f" 'find-file)
+#+END_SRC
+
+Grep for file patterns keybindings
+#+BEGIN_SRC emacs-lisp
+  (general-define-key
+   :states '(normal visual)
+   "M-f" 'consult-line
+   "M-F" 'consult-ripgrep)
+#+END_SRC
+** Text Editing Settings
+Always highlight parens immediately on hover
+#+BEGIN_SRC emacs-lisp
+  (setq-default show-paren-delay 0)
+  (show-paren-mode 1)
+#+END_SRC
+
+Use spaces instead of tabs and set them a width of 4 characters
+#+BEGIN_SRC emacs-lisp
+  (setq tab-width 4)
+  (setq evil-shift-width tab-width)
+
+  (indent-tabs-mode -1)
+#+END_SRC
+
+Show line numbers only in code buffers
+#+BEGIN_SRC emacs-lisp
+  (add-hook 'prog-mode-hook #'display-line-numbers-mode)
+#+END_SRC
+
+Cleanup whitespace when saving
+#+BEGIN_SRC emacs-lisp
+  (add-hook 'before-save-hook 'whitespace-cleanup)
+#+END_SRC
+
+*** Keybinds
+#+BEGIN_SRC emacs-lisp
+  (general-define-key
+   :states '(normal visual)
+   "TAB" 'indent-region
+   "M-s-l" 'format-all-buffer
+   "M-b" 'xref-find-references
+   "M-B" 'xref-find-definitions)
+#+END_SRC
+** General Keybinds
+Remap SPC SPC to M-x function
+#+BEGIN_SRC emacs-lisp
+  (general-define-key
+   :states '(normal visual)
+   :prefix "SPC"
+    "SPC" 'execute-extended-command :which-key "M-x")
+#+END_SRC
+
+Open different tools
+#+BEGIN_SRC emacs-lisp
+    (create-leader-layer open
+      :key "o"
+      "s" 'shell-pop
+      "g" 'magit-status
+      "t" 'dirvish-side
+      "a" 'org-agenda
+      "c" 'org-capture)
+#+END_SRC
+Toggle settings
+#+BEGIN_SRC emacs-lisp
+  (create-leader-layer toggles
+    :key "t"
+    ;;:states '(normal visual)
+    "d" 'corfu-popupinfo-toggle
+    "T" 'modus-themes-toggle
+    "n" 'relative-line-numbers-toggle)
+#+END_SRC
+
+Help keybinds
+#+BEGIN_SRC emacs-lisp
+(create-leader-layer help
+  :key "h"
+  "m" 'consult-man)
+#+END_SRC
+
+General keybinds for major mode prefix
+#+BEGIN_SRC emacs-lisp
+(create-leader-layer major-mode
+  :key "m"
+  "c" '(lambda () (interactive) (bind-for-projectile 'projectile-compile-project 'compile))
+  "C" 'compile)
+#+END_SRC
+** Evil Mode Configuration
+#+BEGIN_SRC emacs-lisp
+  (use-package evil
+    :custom (evil-undo-system 'undo-redo)
+    :init
+    (setq evil-want-keybinding nil
+	  evil-want-C-u-scroll t
+	  evil-respect-visual-line-mode t
+	  evil-search-module 'evil-search)
+    (evil-mode t)
+    :hook
+    ((evil-mode . (lambda ()
+		    (dolist (mode '(custom-mode
+				    eshell-mode
+				    git-rebase-mode
+				    erc-mode
+				    term-mode))
+		      (add-to-list 'evil-emacs-state-modes mode)))))
+    :config
+    ;; Set initial state for some buffers that are insert by default
+    (evil-set-initial-state 'messages-buffer-mode 'normal)
+    (evil-set-initial-state 'dashboard-mode 'normal)
+    :hook (git-commit-mode . evil-insert-state))
+
+  (use-package evil-collection
+    :after evil
+    :ensure t
+    :config
+    (evil-collection-init))
+
+  (use-package evil-surround
+    :config
+    (global-evil-surround-mode 1))
+
+  (use-package evil-numbers)
+
+  (use-package evil-nerd-commenter
+    :bind ("M-/" . evilnc-comment-or-uncomment-lines))
+#+END_SRC
+*** Keybinds
+Set line movement in text mode so that it more vim-like
+#+BEGIN_SRC emacs-lisp
+  (general-define-key
+   :keymaps 'text-mode-map
+   :states '(visual motion)
+   "j" 'evil-next-visual-line
+   "k" 'evil-previous-visual-line
+   "$" 'evil-end-of-visual-line)
+#+END_SRC
+
+Increse and decrement numbers same as in vim
+#+BEGIN_SRC emacs-lisp
+  (general-define-key
+   :states '(normal visual)
+   "C-a" 'evil-numbers/inc-at-pt
+   "C-x" 'evil-numbers/dec-at-pt)
+#+END_SRC
+* UI Configurations
+Set emacs UI defaults
+#+BEGIN_SRC emacs-lisp
+  (tool-bar-mode -1)
+  (scroll-bar-mode -1)
+  (blink-cursor-mode -1)
+#+END_SRC
+
+Install icons
+#+BEGIN_SRC emacs-lisp
+  (use-package all-the-icons)
+#+END_SRC
+** Modeline
+Display column number in modeline
+#+BEGIN_SRC emacs-lisp
+  (setq column-number-mode t)
+#+END_SRC
+
+Allow hiding minor modes from the modeline
+#+BEGIN_SRC emacs-lisp
+  (use-package diminish
+    :ensure t)
+  (eval-after-load "eldoc"
+    '(diminish 'eldoc-mode))
+  (eval-after-load "undo-tree"
+    '(diminish 'undo-tree-mode))
+#+END_SRC
+
+Hide additiona minor modes in modeline under a button
+#+BEGIN_SRC emacs-lisp
+  (use-package minions
+    :config (minions-mode)
+    :custom (minions-mode-line-lighter "..."))
+#+END_SRC
+
+** Theme
+#+BEGIN_SRC emacs-lisp
+  (use-package modus-themes
+    :config
+    ;; Add all your customizations prior to loading the themes
+    (setq modus-themes-italic-constructs t
+	  modus-themes-bold-constructs nil)
+
+    ;; Maybe define some palette overrides, such as by using our presets
+    (setq modus-themes-common-palette-overrides
+	  modus-themes-preset-overrides-intense
+	  modus-themes-to-toggle '(modus-operandi-deuteranopia modus-vivendi-tinted))
+
+    (load-theme 'modus-vivendi-tinted))
+#+END_SRC
+** Git gutter
+#+BEGIN_SRC emacs-lisp
+  ;; Increase the fringe for git-gutter
+  (fringe-mode '(15 . 15))
+
+  (use-package git-gutter
+    :hook (prog-mode . git-gutter-mode)
+    :config (setq git-gutter:update-interval 0.02))
+
+  (use-package git-gutter-fringe
+    :config
+    (define-fringe-bitmap 'git-gutter-fr:added [224] nil nil '(center repeated))
+    (define-fringe-bitmap 'git-gutter-fr:modified [224] nil nil '(center repeated))
+    (define-fringe-bitmap 'git-gutter-fr:deleted [128 192 224 240] nil nil 'bottom))
+#+END_SRC
+* Completion Framework
+#+BEGIN_SRC emacs-lisp
+  (use-package orderless
+    :ensure t
+    :custom
+    (completion-styles '(orderless basic))
+    (completion-category-overrides '((file (styles basic partial-completion)))))
+
+  (use-package vertico
+    :bind (:map vertico-map
+		("C-u" . vertico-scroll-up)
+		("C-d" . vertico-scroll-down)
+		("C-k" . vertico-previous)
+		("C-j" . vertico-next))
+    :init (vertico-mode))
+
+  (use-package consult)
+
+  (use-package marginalia
+    :custom
+    (marginalia-max-relative-age 0)
+    (marginalia-align 'right)
+    :init
+    (marginalia-mode))
+
+  (use-package all-the-icons-completion
+    :after (marginalia all-the-icons)
+    :hook (marginalia-mode . all-the-icons-completion-marginalia-setup)
+    :init
+    (all-the-icons-completion-mode))
+#+END_SRC
+
+Setup xref to use consult for finding definitions and usages and do not ask which identifier to select
+#+BEGIN_SRC emacs-lisp
+(setq xref-prompt-for-identifier nil
+      xref-show-xrefs-function #'consult-xref
+      xref-show-definitions-function #'consult-xref)
+#+END_SRC
+
+* Project Management
+Setup projectile for managing projects and perspective for managing groups of window layouts for projects
+#+BEGIN_SRC emacs-lisp
+  (use-package projectile
+    :init
+    (projectile-mode +1)
+    (when (file-directory-p "~/workspace")
+      (setq projectile-project-search-path '("~/workspace/work/projects", "~/workspace/personal/projects"))))
+
+  (use-package perspective
+    :custom
+    (persp-mode-prefix-key (kbd "C-z"))
+    :init
+    (persp-mode))
+#+END_SRC
+*** Functions
+This function allows you to do one action if inside a projectile project and another if not
+#+BEGIN_SRC emacs-lisp
+  (defun bind-for-projectile (projectile-function regular-function)
+    "Bind to `projectile-function' if current dir is projectile project and `regular-function' otherwise."
+    (interactive)
+    (if (projectile-project-p)
+	(call-interactively projectile-function)
+      (call-interactively regular-function)))
+#+END_SRC
+*** Keybinds
+Projectile specific keybindings
+#+BEGIN_SRC emacs-lisp
+  (create-leader-layer projects
+    :key "p"
+    "f" 'projectile-find-file
+    "s" 'projectile-switch-project
+    "o" 'projectile-switch-open-project
+    "c" 'projectile-compile-project
+    "b" 'consult-project-buffer
+    "w" 'projectile-save-project-buffers)
+#+END_SRC
+
+Perspecctive mode keybindings
+#+BEGIN_SRC emacs-lisp
+  (general-define-key
+   :states '(normal visual)
+   "M-1" (lambda () (interactive) (persp-switch-by-number 1))
+   "M-2" (lambda () (interactive) (persp-switch-by-number 2))
+   "M-3" (lambda () (interactive) (persp-switch-by-number 3))
+   "M-4" (lambda () (interactive) (persp-switch-by-number 4))
+   "M-5" (lambda () (interactive) (persp-switch-by-number 5))
+   "M-6" (lambda () (interactive) (persp-switch-by-number 6))
+   "M-7" (lambda () (interactive) (persp-switch-by-number 7))
+   "M-8" (lambda () (interactive) (persp-switch-by-number 8))
+   "M-9" (lambda () (interactive) (persp-switch-by-number 9))
+
+   "M-w" 'persp-kill
+   "M-N" 'persp-switch
+   "M-s-<right>" 'persp-next
+   "M-s-<left>" 'persp-prev)
+#+END_SRC
+* Development Tools
+** Code Completion
+Configure corfu with icons for inline code completion
+#+BEGIN_SRC emacs-lisp
+  (use-package corfu
+    :custom
+    (corfu-auto t)
+    (corfu-cycle t)
+    :bind (:map corfu-map ;; TODO: fix this
+		("C-u" . corfu-popupinfo-scroll-up)
+		("C-d" . corfu-popupinfo-scroll-down))
+    :init
+    (global-corfu-mode)
+    (corfu-popupinfo-mode))
+
+  (use-package kind-icon
+    :after corfu
+    :custom
+    (kind-icon-use-icons t)
+    ;; Have background color be the same as `corfu' face background
+    (kind-icon-default-face 'corfu-default)
+    ;; Use midpoint color between foreground and background colors ("blended")?
+    (kind-icon-blend-background nil)
+    (kind-icon-blend-frac 0.08)
+
+    ;; Use a different cache directory don't make a mess in my `user-emacs-directory'
+    (svg-lib-icons-dir (concat user-emacs-directory "cache/svg-lib"))
+    :config
+    (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter)) ;; Enable `kind-icon'
+
+  ;; Add hook to reset cache so the icon colors in completion popups match my theme
+  (add-hook 'modus-themes-after-load-theme-hook #'(lambda () (interactive) (kind-icon-reset-cache)))
+#+END_SRC
+
+Configure code snippets
+#+BEGIN_SRC emacs-lisp
+    (use-package yasnippet
+      :init (setq yas-snippet-dirs '(user-snippets-directory))
+      :config (yas-global-mode))
+#+END_SRC
+** Git
+#+BEGIN_SRC emacs-lisp
+  (use-package magit)
+#+END_SRC
+** Terminal
+#+BEGIN_SRC emacs-lisp
+  (use-package vterm)
+
+  (use-package shell-pop
+    :custom
+    (shell-pop-full-span t)
+    (shell-pop-shell-type '("vterm" "*vterm*" (lambda () (vterm)))))
+#+END_SRC
+** Filesystem navigation/management
+#+BEGIN_SRC emacs-lisp
+  (use-package dirvish
+    :init
+    (dirvish-override-dired-mode)
+    :config
+    (dirvish-side-follow-mode t)
+    (setq delete-by-moving-to-trash t)
+    (setq dirvish-attributes
+	  '(all-the-icons file-time file-size collapse subtree-state vc-state git-msg))
+    :custom
+    (dirvish-side-width 30)
+    (dirvish-use-header-line t)
+    (dirvish-use-mode-line nil)
+    (dirvish-fd-default-dir "~/"))
+#+END_SRC
+** Syntax hilighting/formatting
+Configure all syntax hilighting to use treesitter if possible
+#+BEGIN_SRC emacs-lisp
+(use-package treesit-auto
+  :custom
+  (treesit-auto-install 'prompt)
+  :config
+  (treesit-auto-add-to-auto-mode-alist 'all)
+  (global-treesit-auto-mode))
+#+END_SRC
+
+Enable code formatting on all code files
+#+BEGIN_SRC emacs-lisp
+(use-package format-all
+  :hook (prog-mode . format-all-ensure-formatter))
+#+END_SRC
+
+** Language Server Protocol
+#+BEGIN_SRC emacs-lisp
+(use-package lsp-mode
+  :after yasnippet
+  :hook ((c-mode          ; clangd
+	  c++-mode        ; clangd
+	  c-or-c++-mode   ; clangd
+	  rust-mode-hook
+	  java-ts-mode       ; eclipse-jdtls
+	  typescript-mode ; ts-ls (tsserver wrapper)
+	  python-base-mode     ; pyright
+	  ) . lsp-deferred)
+  :commands lsp
+  :config
+  (setq lsp-auto-guess-root t)
+  (setq lsp-log-io nil)
+  (setq lsp-restart 'auto-restart)
+  (setq lsp-enable-on-type-formatting nil)
+  (setq lsp-modeline-code-actions-enable nil)
+  (setq lsp-modeline-diagnostics-enable nil)
+  (setq lsp-headerline-breadcrumb-enable t)
+  (setq lsp-semantic-tokens-enable nil)
+  (setq lsp-enable-folding nil)
+  (setq lsp-enable-imenu nil)
+  (setq read-process-output-max (* 1024 1024)) ;; 1MB
+  (setq lsp-idle-delay 0.2))
+
+(use-package lsp-ui
+  :config
+  (setq lsp-prefer-flymake nil
+	lsp-ui-doc-enable t
+	lsp-ui-doc-delay 0.0
+	lsp-ui-doc-position 'at-point
+	lsp-ui-doc-show-with-mouse nil
+	lsp-ui-sideline-enable nil))
+#+END_SRC
+
+*** Keybinds
+#+BEGIN_SRC emacs-lisp
+  (general-nmap
+    :keymaps 'lsp-mode-map
+    "M-r" 'lsp-find-references
+    "M-D" 'dap-hydra
+    "SPC R" 'lsp-rename
+    "M-RET" 'dap-eval)
+#+END_SRC
+* Org Mode Configuration
+Beautify org-mode UI
+#+BEGIN_SRC emacs-lisp
+  ;; Add frame borders and window dividers
+  ;; Need to set this only for org mode otherwise can be annoying
+  ;; (modify-all-frames-parameters
+  ;;  '((right-divider-width . 40)
+  ;;    (internal-border-width . 40)))
+  ;; (dolist (face '(window-divider
+  ;;		  window-divider-first-pixel
+  ;;		  window-divider-last-pixel))
+  ;;   (face-spec-reset-face face)
+  ;;   (set-face-foreground face (face-attribute 'default :background)))
+  ;; (set-face-background 'fringe (face-attribute 'default :background))
+
+  (use-package org-modern
+    :init
+    (setq
+     ;; Edit settings
+     org-auto-align-tags nil
+     org-tags-column 0
+     org-catch-invisible-edits 'show-and-error
+     org-special-ctrl-a/e t
+     org-insert-heading-respect-content t
+
+     ;; Org styling, hide markup etc.
+     org-hide-emphasis-markers t
+     org-pretty-entities t
+     org-ellipsis "…"
+
+     ;; Agenda styling
+     org-agenda-tags-column 0
+     org-agenda-block-separator ?─
+     org-agenda-time-grid
+     '((daily today require-timed)
+       (800 1000 1200 1400 1600 1800 2000)
+       " ┄┄┄┄┄ " "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄")
+     org-agenda-current-time-string
+     "◀── now ─────────────────────────────────────────────────")
+    :config
+    (global-org-modern-mode))
+
+  ;; Ellipsis styling
+  (setq org-ellipsis "…")
+  (set-face-attribute 'org-ellipsis nil :inherit 'default :box nil)
+#+END_SRC
+*** Keybinds
+#+BEGIN_SRC emacs-lisp
+  (general-define-key
+   :major-modes 'org-mode
+   :states '(normal visual)
+   "C-c C-t" 'org-todo
+   "C-c C-w" 'org-refile
+   "TAB" 'org-cycle
+   "RET" 'org-open-at-point
+   "-" 'org-cycle-list-bullet)
+#+END_SRC
+* Language Specific Configuration
+** Emacs Lisp
+*** Keybinds
+#+BEGIN_SRC emacs-lisp
+  (create-leader-layer major-mode
+      :key "m"
+      :states '(normal visual)
+      :keymaps '(emacs-lisp-mode-map lisp-interaction-mode-map)
+      "e" 'eval-last-sexp
+      "b" 'eval-buffer
+      "r" 'eval-reigon
+      "p" 'eval-print-last-sexp)
+
+  (general-nmap
+   :keymaps '(emacs-lisp-mode-map lisp-interaction-mode-map)
+   "TAB" 'lisp-indent-line)
+#+END_SRC
+** C/C++
+#+BEGIN_SRC emacs-lisp
+(use-package ccls
+  :hook ((c-mode c++-mode objc-mode cuda-mode) .
+	 (lambda () (require 'ccls) (lsp))))
+#+END_SRC
+** Python
+Setup pyright for use with lsp mode
+#+BEGIN_SRC emacs-lisp
+  (use-package lsp-pyright
+    :hook (python-base-mode . (lambda () (require 'lsp-pyright)))
+    :init (when (executable-find "python3")
+	    (setq lsp-pyright-python-executable-cmd "python3")))
+#+END_SRC
+
+** Nix
+Treesit auto doesn't find nix treesitter mode so add it manually
+#+BEGIN_SRC emacs-lisp
+(use-package nix-ts-mode
+  :mode "\\.nix\\'")
+#+END_SRC
