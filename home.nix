@@ -36,6 +36,7 @@
     ./programs.nix
     #./alacritty
     ./zsh
+    ./starship
     ./git/work-git.nix
     ./tmux
     ./nvim

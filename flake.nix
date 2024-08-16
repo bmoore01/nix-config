@@ -36,14 +36,14 @@
   in {
     darwinConfigurations."${secrets.work.hostname}" = nix-darwin.lib.darwinSystem {
       inherit system;
-      specialArgs = inputs // { inherit username; };
+      specialArgs = inputs // {inherit username;};
       modules = [
         ./hosts/darwin
         home-manager.darwinModules.home-manager
         {
           home-manager = {
             users."${username}" = import ./home.nix;
-            extraSpecialArgs = { inherit inputs username secrets; };
+            extraSpecialArgs = {inherit inputs username secrets;};
           };
           users.users."${username}".home = "/Users/${username}";
         }

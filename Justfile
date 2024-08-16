@@ -1,9 +1,10 @@
+alias reload := reload-mac
 # Reload mac config
-@reload-mac
+reload-mac:
   darwin-rebuild switch --flake path .
 
 # Format nix files
-@fmt
+fmt:
   nix fmt
 
 # Delete result
