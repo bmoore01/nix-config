@@ -4,23 +4,16 @@
   agenix,
   ...
 }: {
-  imports = [agenix.darwinModules.default];
+  imports = [
+    ../../modules/shared/nix
+    agenix.darwinModules.default
+  ];
 
   # Auto update nix package and the daemon service
   services.nix-daemon.enable = true;
 
-  nix = {
-    settings = {
-      trusted-users = ["root" "${username}"];
-      experimental-features = ["nix-command" "flakes" "repl-flake"];
-      max-jobs = "auto";
-      auto-optimise-store = true;
-    };
-  };
-
   # Create /etc/zshrc that loads the nix-darwin environment.
   programs = {
-    #gnupg.agent.enable = true;
     zsh.enable = true; # default shell on catalina
   };
 

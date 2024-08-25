@@ -3,7 +3,7 @@
   secrets,
   ...
 }: {
-  imports = [./default.nix];
+  imports = [../../../shared/home-manager/git];
 
   programs.git = {
     userName = "${username}";

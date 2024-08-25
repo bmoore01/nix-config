@@ -9,9 +9,6 @@
 
     neovide
 
-    python312Packages.ipython
-
-
     # Secret management
     git-crypt
 

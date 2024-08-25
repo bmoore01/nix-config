@@ -15,7 +15,7 @@
     enable = true;
 
     userName = lib.mkDefault "bmoore01";
-    userEmail = lib.mkDefault "${secrets.github.email}";
+    userEmail = lib.mkDefault "${secrets.personal.github.email}";
 
     lfs = {
       enable = true;
