@@ -7,7 +7,6 @@ in {
       window = {
         title = "Terminal";
         opacity = 0.8;
-        decorations = "none";
         option_as_alt = "Both";
       };
       scrolling.history = 10000;

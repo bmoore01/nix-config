@@ -6,6 +6,7 @@
     # Shared home-manager modules
     ../../modules/shared/home-manager
     ../../modules/shared/home-manager/zsh
+    ../../modules/shared/home-manager/alacritty
     ../../modules/shared/home-manager/starship
     ../../modules/shared/home-manager/emacs
     ../../modules/shared/home-manager/git
@@ -18,6 +19,9 @@
   ];
 
   home.packages = with pkgs; [
+
+    neovide 
+
     discord
     spotify
 
