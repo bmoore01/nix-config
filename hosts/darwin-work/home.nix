@@ -1,6 +1,4 @@
-{
-  ...
-}: {
+{...}: {
   imports = [
     # Shared home-manager modules
     ../../modules/shared/home-manager

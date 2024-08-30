@@ -15,6 +15,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    flake-parts.url = "github:hercules-ci/flake-parts";
+
+    treefmt-nix = {
+      url = "github:numtide/treefmt-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     agenix = {
       url = "github:yaxitech/ragenix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -25,70 +32,84 @@
     self,
     nixpkgs,
     nix-darwin,
-    agenix,
     home-manager,
+    flake-parts,
+    treefmt-nix,
+    agenix,
     ...
   } @ inputs: let
     secrets = builtins.fromJSON (builtins.readFile "${self}/secrets/secrets.json");
-  in {
-    darwinConfigurations = let
-      username = "${secrets.work.username}";
-      system = "aarch64-darwin";
-    in {
-      "${secrets.work.hostname}" = nix-darwin.lib.darwinSystem {
-        inherit system;
-        specialArgs = inputs // {inherit username;};
-        modules = [
-          ./hosts/darwin-work/configuration.nix
-          home-manager.darwinModules.home-manager
-          {
-            home-manager = {
-              users."${username}" = import ./hosts/darwin-work/home.nix;
-              extraSpecialArgs = {inherit inputs username secrets;};
-            };
-            users.users."${username}".home = "/Users/${username}";
-          }
-        ];
+  in
+    flake-parts.lib.mkFlake {inherit inputs;} {
+      imports = [inputs.treefmt-nix.flakeModule];
+
+      systems = ["aarch64-darwin" "x86_64-linux"];
+      perSystem = {
+        config,
+        self',
+        inputs',
+        pkgs,
+        system,
+        ...
+      }: {
+        devShells = {
+          default = pkgs.mkShell {
+            name = "nix-config";
+            packages = with pkgs; [nil];
+          };
+        };
+
+        treefmt = {
+          projectRootFile = "flake.nix";
+          # Add nix formatter
+          programs.alejandra.enable = true;
+        };
+      };
+
+      flake = {
+        darwinConfigurations = let
+          username = "${secrets.work.username}";
+          system = "aarch64-darwin";
+        in {
+          "${secrets.work.hostname}" = nix-darwin.lib.darwinSystem {
+            inherit system;
+            specialArgs = inputs // {inherit username;};
+            modules = [
+              ./hosts/darwin-work/configuration.nix
+              home-manager.darwinModules.home-manager
+              {
+                home-manager = {
+                  users."${username}" = import ./hosts/darwin-work/home.nix;
+                  extraSpecialArgs = {inherit inputs username secrets;};
+                };
+                users.users."${username}".home = "/Users/${username}";
+              }
+            ];
+          };
+        };
+
+        nixosConfigurations = let
+          username = "${secrets.personal.username}";
+          system = "x86_64-linux";
+        in {
+          "${secrets.personal.hostname}" = nixpkgs.lib.nixosSystem {
+            inherit system;
+            specialArgs = inputs // {inherit username secrets;};
+            modules = [
+              ./hosts/nixos-desktop/configuration.nix
+              home-manager.nixosModules.home-manager
+              {
+                home-manager = {
+                  useGlobalPkgs = true;
+                  useUserPackages = true;
+
+                  users."${username}" = import ./hosts/nixos-desktop/home.nix;
+                  extraSpecialArgs = {inherit inputs username secrets;};
+                };
+              }
+            ];
+          };
+        };
       };
     };
-
-    nixosConfigurations = let
-      username = "${secrets.personal.username}";
-      system = "x86_64-linux";
-    in {
-      "${secrets.personal.hostname}" = nixpkgs.lib.nixosSystem {
-        inherit system;
-        specialArgs = inputs // {inherit username secrets;};
-        modules = [
-          ./hosts/nixos-desktop/configuration.nix
-          home-manager.nixosModules.home-manager
-          {
-            home-manager = {
-              useGlobalPkgs = true;
-              useUserPackages = true;
-
-              users."${username}" = import ./hosts/nixos-desktop/home.nix;
-              extraSpecialArgs = {inherit inputs username secrets;};
-            };
-          }
-        ];
-      };
-    };
-
-    devShell."x86_64-linux" = nixpkgs.legacyPackages."x86_64-linux".mkShell {
-      buildInputs = [
-        nixpkgs.legacyPackages."x86_64-linux".nil
-      ];
-    };
-
-    devShell."aarch64-darwin" = nixpkgs.legacyPackages."aarch64-darwin".mkShell {
-      buildInputs = [
-        nixpkgs.legacyPackages."aarch64-darwin".nil
-      ];
-    };
-
-    # nix code formatter
-    formatter."x86_64-linux" = nixpkgs.legacyPackages."x86_64-linux".alejandra;
-    formatter."aarch64-darwin" = nixpkgs.legacyPackages."aarch64-darwin".alejandra;
-  };
 }

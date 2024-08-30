@@ -1,7 +1,4 @@
-{
-  pkgs,
-  ...
-}: {
+{pkgs, ...}: {
   imports = [
     # Shared home-manager modules
     ../../modules/shared/home-manager
@@ -19,8 +16,7 @@
   ];
 
   home.packages = with pkgs; [
-
-    neovide 
+    neovide
 
     discord
     spotify
