@@ -1,9 +1,17 @@
-{...}: let
+{ ... }: let
   font = "Hack Nerd Font Mono";
 in {
+
+  xdg.configFile."alacritty/cyberdream.toml".source = ./cyberdream.toml;
+  xdg.configFile."alacritty/cyberdream-light.toml".source = ./cyberdream-light.toml;
+
   programs.alacritty = {
     enable = true;
     settings = {
+      import = [
+        "~/.config/alacritty/cyberdream.toml"
+        #"~/.config/alacritty/cyberdream-light.toml"
+      ];
       window = {
         title = "Terminal";
         opacity = 0.8;
