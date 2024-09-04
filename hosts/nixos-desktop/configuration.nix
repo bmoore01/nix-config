@@ -143,6 +143,9 @@
     neovim
     curl
 
+    # Clipboard for wayland
+    wl-clipboard-x11
+
     # Headset control
     headsetcontrol
 
