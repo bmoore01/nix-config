@@ -23,6 +23,7 @@
     packages = with pkgs; [
       # Utils
       ripgrep
+      fd
       jq # JSON processor
       jqp # JQ playground
       fzf # Fuzzy finder
