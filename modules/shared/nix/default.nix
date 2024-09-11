@@ -1,5 +1,4 @@
 {
-  pkgs,
   username,
   ...
 }: {
@@ -21,7 +20,6 @@
     # Set nix to perform garbage collection every week to reduce disk usage
     gc = {
       automatic = true;
-      dates = "weekly";
       options = "--delete-older-than 1w";
     };
   };

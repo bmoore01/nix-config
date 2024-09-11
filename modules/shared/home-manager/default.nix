@@ -22,8 +22,8 @@
 
     packages = with pkgs; [
       # Utils
-      ripgrep
-      fd
+      ripgrep # Find patterns in files
+      fd # Find files
       jq # JSON processor
       jqp # JQ playground
       fzf # Fuzzy finder

@@ -1,6 +1,5 @@
 {
   pkgs,
-  username,
   agenix,
   ...
 }: {
@@ -27,6 +26,12 @@
 
   # Enable touch ID for sudo
   security.pam.enableSudoTouchIdAuth = true;
+
+  nix.gc.interval = {
+    Weekday = 5;
+    Hour = 17;
+    Minute = 0;
+  };
 
   system = {
     stateVersion = 4;
