@@ -261,18 +261,6 @@ Define predicate so next and previous buffers skip emacs special buffers
     "n" 'next-buffer
     "p" 'previous-buffer)
 #+END_SRC
-
-**** TODO Look into Intellij style jumping
-So anytime a I jump to a new file or a new part of a file or a function definition etc save that
-so I can jump back and forth between these states instead of just though buffers.
-
-For now, bind next and pervious buffer functions
-#+BEGIN_SRC emacs-lisp
-  (general-define-key
-   :states '(normal visual)
-   "M-]" 'next-buffer :which-key "next buffer"
-   "M-[" 'previous-buffer :which-key "previous buffer")
-#+END_SRC
 ** Search Settings
 Everything related to finding files/parts of a file
 
@@ -417,6 +405,14 @@ Set line movement in text mode so that it more vim-like
    "j" 'evil-next-visual-line
    "k" 'evil-previous-visual-line
    "$" 'evil-end-of-visual-line)
+#+END_SRC
+
+Configure jumplist
+#+BEGIN_SRC emacs-lisp
+  (general-define-key
+   :states '(normal visual)
+   "M-]" 'evil-jump-foreward
+   "M-[" 'evil-jump-backward)
 #+END_SRC
 
 Increse and decrement numbers same as in vim
@@ -648,6 +644,7 @@ Configure code snippets
     :config
     (dirvish-side-follow-mode t)
     (setq delete-by-moving-to-trash t)
+    (setq dirvish-reuse-session nil)
     (setq dirvish-attributes
 	  '(all-the-icons file-time file-size collapse subtree-state vc-state git-msg))
     :custom
@@ -656,6 +653,14 @@ Configure code snippets
     (dirvish-use-mode-line nil)
     (dirvish-fd-default-dir "~/"))
 #+END_SRC
+
+*** Keybinds
+#+BEGIN_SRC emacs-lisp
+  (general-define-key
+   :major-modes 'dirvish-mode
+   "TAB" 'dirvish-subtree-toggle)
+#+END_SRC
+
 ** Syntax hilighting/formatting
 Configure all syntax hilighting to use treesitter if possible
 #+BEGIN_SRC emacs-lisp
@@ -811,6 +816,12 @@ Setup pyright for use with lsp mode
 ** Nix
 Treesit auto doesn't find nix treesitter mode so add it manually
 #+BEGIN_SRC emacs-lisp
-(use-package nix-ts-mode
-  :mode "\\.nix\\'")
+  (use-package nix-ts-mode
+    :mode "\\.nix\\'")
+#+END_SRC
+
+Set and store the right environment per buffer if it is part of a nix flake with a dev shell
+#+BEGIN_SRC emacs-lisp
+  (use-package envrc
+  :hook (after-init . envrc-global-mode))
 #+END_SRC
