@@ -23,7 +23,7 @@
       "nvidia-drm.fbdev=1"
     ];
   };
-  
+
   nix.gc.dates = "weekly";
 
   networking.hostName = "${secrets.personal.hostname}"; # Define your hostname.

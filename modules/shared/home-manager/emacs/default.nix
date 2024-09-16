@@ -1,14 +1,23 @@
-{
-  pkgs,
-  config,
-  lib,
-  ...
-}: {
-  home.file.".emacs.d/init.el".text = builtins.readFile ./init.el;
-  home.file.".emacs.d/config.org".text = builtins.readFile ./config.org;
-
+{pkgs, ...}: {
   programs.emacs = {
     enable = true;
-    package = with pkgs; ((emacsPackagesFor emacs29-gtk3).emacsWithPackages (epkgs: with epkgs; [vterm treesit-grammars.with-all-grammars]));
+    package = (
+      pkgs.emacsWithPackagesFromUsePackage {
+        config = ./config.org;
+        defaultInitFile = true;
+        alwaysEnsure = true;
+        alwaysTangle = true;
+        package =
+          if pkgs.stdenv.isDarwin
+          then pkgs.emacs
+          else pkgs.emacs29-pgtk;
+
+        extraEmacsPackages = epkgs:
+          with epkgs; [
+            vterm
+            treesit-grammars.with-all-grammars
+          ];
+      }
+    );
   };
 }

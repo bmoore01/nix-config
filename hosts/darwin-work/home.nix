@@ -1,7 +1,4 @@
-{
-  pkgs,
-  ...
-}: {
+{pkgs, ...}: {
   imports = [
     # Shared home-manager modules
     ../../modules/shared/home-manager
@@ -14,7 +11,6 @@
     # Darwin specific home-manager modules
     ../../modules/darwin/home-manager/git
   ];
-
 
   home.packages = with pkgs; [
     # Docker stuff

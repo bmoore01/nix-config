@@ -1,7 +1,6 @@
-{ ... }: let
+{...}: let
   font = "Hack Nerd Font Mono";
 in {
-
   xdg.configFile."alacritty/cyberdream.toml".source = ./cyberdream.toml;
   xdg.configFile."alacritty/cyberdream-light.toml".source = ./cyberdream-light.toml;
 

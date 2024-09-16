@@ -1,6 +1,57 @@
+:DOC:
+#+PROPERTY: header-args:emacs-lisp :lexical t :tangle config.el
+:END:
 #+TITLE: Config
 
 * General Configuration
+** General Variables/Constants
+Define constants
+#+BEGIN_SRC emacs-lisp
+  (defconst user-secrets-directory (concat user-emacs-directory "private/")
+    "Dir ignored by git for, passwords, private keys etc.")
+
+  (defconst custom-file (concat user-emacs-directory "config/custom.el")
+    "File to store emacs custom variables.")
+
+  (defconst user-backups-directory (concat user-emacs-directory "backups/")
+    "Directory for storing all the emacs backup files")
+
+  (defconst user-snippets-directory (concat user-emacs-directory "snippets/")
+    "Directory for yasnippet code snippet files")
+
+  (defconst leader-key "SPC"
+    "vim-style leader key for leader keybindings")
+#+END_SRC
+
+** Utility packages
+Setup packages used throughout the configuration which should be defined early on
+
+Set :ensure t for all use-package calls
+#+BEGIN_SRC emacs-lisp
+  (setq use-package-always-ensure t)
+
+  (use-package bind-key)
+#+END_SRC
+
+Setup general and hydra to make defining keybinds easier
+#+BEGIN_SRC emacs-lisp
+  (use-package general
+    :after evil
+    :init (general-evil-setup))
+    ;;:config (general-evil-setup t))
+
+  (use-package hydra
+    :defer 1)
+#+END_SRC
+
+Show which keybindings are asigned to what
+#+BEGIN_SRC emacs-lisp
+(use-package which-key
+  :diminish
+  :init
+  (which-key-mode))
+#+END_SRC
+
 ** Utility Functions
 Theses are declared first they can be used throughout the config file
 
@@ -24,7 +75,7 @@ This method switches between relative and regular line numbering
 This macro defines a keybind 'layer' similar to spacemacs where you hit the leader key then a key for
 a collection of keybinds
 #+BEGIN_SRC emacs-lisp
-  (cl-defmacro create-leader-layer (name &rest params &key key (leader leader-key) (states '(normal)) &allow-other-keys)
+  (cl-defmacro create-leader-layer (name &rest params &key key (leader "SPC") (states '(normal)) &allow-other-keys)
     "A wrapper for `general-define-key' for simpler definition of spacemacs-style layer keybindings using `leader-key' `key' to acces a group of keybindings
   `leader-key' can be specified per invocation or by setting the global variable with the same name. a required input is `key' which specified which key comes
   after leader in order to acess the bindings specified in this macro"
@@ -45,31 +96,6 @@ a collection of keybinds
 	,@other-keys
 	,@maps)))
 #+END_SRC
-** Use-Package Config
-Set :ensure t for all use-package calls
-#+BEGIN_SRC emacs-lisp
-  (setq use-package-always-ensure t)
-#+END_SRC
-** Utility packages
-Setup packages used throughout the configuration which should be defined early on
-
-Setup general and hydra to make defining keybinds easier
-#+BEGIN_SRC emacs-lisp
-  (use-package general
-    :after evil
-    :config (general-evil-setup t))
-
-  (use-package hydra
-    :defer 1)
-#+END_SRC
-
-Show which keybindings are asigned to what
-#+BEGIN_SRC emacs-lisp
-(use-package which-key
-  :diminish
-  :init
-  (which-key-mode))
-#+END_SRC
 ** Mac Specific Config
 
 This snippet sets the path in mac so that Emacs can find mac programs on the machine
@@ -83,25 +109,6 @@ TODO: Investigate if I can remove this once my config is in nix
       :config
       (exec-path-from-shell-initialize)))
     #+END_SRC
-
-** General Variables/Constants
-Define constants
-#+BEGIN_SRC emacs-lisp
-  (defconst user-secrets-directory (concat user-emacs-directory "private/")
-    "Dir ignored by git for, passwords, private keys etc.")
-
-  (defconst custom-file (concat user-emacs-directory "config/custom.el")
-    "File to store emacs custom variables.")
-
-  (defconst user-backups-directory (concat user-emacs-directory "backups/")
-    "Directory for storing all the emacs backup files")
-
-  (defconst user-snippets-directory (concat user-emacs-directory "snippets/")
-    "Directory for yasnippet code snippet files")
-
-  (defconst leader-key "SPC"
-    "vim-style leader key for leader keybindings")
-#+END_SRC
 
 Switch mac keybinds so set super -> meta and meta -> super
 #+BEGIN_SRC emacs-lisp
@@ -269,8 +276,8 @@ Find file keybindings
 #+BEGIN_SRC emacs-lisp
   (create-leader-layer files
     :key "f"
-    "F" 'consult-fd
-    "f" 'find-file)
+    "f" 'consult-fd
+    "F" 'find-file)
 #+END_SRC
 
 Grep for file patterns keybindings
@@ -329,7 +336,6 @@ Open different tools
       :key "o"
       "s" 'shell-pop
       "g" 'magit-status
-      "t" 'dirvish-side
       "a" 'org-agenda
       "c" 'org-capture)
 #+END_SRC
@@ -636,30 +642,6 @@ Configure code snippets
     (shell-pop-full-span t)
     (shell-pop-shell-type '("vterm" "*vterm*" (lambda () (vterm)))))
 #+END_SRC
-** Filesystem navigation/management
-#+BEGIN_SRC emacs-lisp
-  (use-package dirvish
-    :init
-    (dirvish-override-dired-mode)
-    :config
-    (dirvish-side-follow-mode t)
-    (setq delete-by-moving-to-trash t)
-    (setq dirvish-reuse-session nil)
-    (setq dirvish-attributes
-	  '(all-the-icons file-time file-size collapse subtree-state vc-state git-msg))
-    :custom
-    (dirvish-side-width 30)
-    (dirvish-use-header-line t)
-    (dirvish-use-mode-line nil)
-    (dirvish-fd-default-dir "~/"))
-#+END_SRC
-
-*** Keybinds
-#+BEGIN_SRC emacs-lisp
-  (general-define-key
-   :major-modes 'dirvish-mode
-   "TAB" 'dirvish-subtree-toggle)
-#+END_SRC
 
 ** Syntax hilighting/formatting
 Configure all syntax hilighting to use treesitter if possible
@@ -717,7 +699,8 @@ Enable code formatting on all code files
 
 *** Keybinds
 #+BEGIN_SRC emacs-lisp
-  (general-nmap
+  (general-define-key
+    :states 'normal
     :keymaps 'lsp-mode-map
     "M-r" 'lsp-find-references
     "M-D" 'dap-hydra
@@ -756,7 +739,6 @@ Beautify org-mode UI
 
      ;; Agenda styling
      org-agenda-tags-column 0
-     org-agenda-block-separator ?─
      org-agenda-time-grid
      '((daily today require-timed)
        (800 1000 1200 1400 1600 1800 2000)
@@ -765,10 +747,6 @@ Beautify org-mode UI
      "◀── now ─────────────────────────────────────────────────")
     :config
     (global-org-modern-mode))
-
-  ;; Ellipsis styling
-  (setq org-ellipsis "…")
-  (set-face-attribute 'org-ellipsis nil :inherit 'default :box nil)
 #+END_SRC
 *** Keybinds
 #+BEGIN_SRC emacs-lisp
@@ -794,8 +772,9 @@ Beautify org-mode UI
       "r" 'eval-reigon
       "p" 'eval-print-last-sexp)
 
-  (general-nmap
+  (general-define-key
    :keymaps '(emacs-lisp-mode-map lisp-interaction-mode-map)
+   :states 'normal
    "TAB" 'lisp-indent-line)
 #+END_SRC
 ** C/C++

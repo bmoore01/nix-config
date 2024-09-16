@@ -26,6 +26,11 @@
       url = "github:yaxitech/ragenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    emacs-overlay = {
+      url = "github:nix-community/emacs-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
@@ -52,6 +57,12 @@
         system,
         ...
       }: {
+        _module.args.pkgs = import self.inputs.nixpkgs {
+          inherit system;
+          overlays = [self.overlays.default];
+          config.allowUnfree = true;
+        };
+
         devShells = {
           default = pkgs.mkShell {
             name = "nix-config";
@@ -61,12 +72,15 @@
 
         treefmt = {
           projectRootFile = "flake.nix";
-          # Add nix formatter
           programs.alejandra.enable = true;
         };
       };
 
       flake = {
+        overlays.default = inputs.nixpkgs.lib.composeManyExtensions [
+          inputs.emacs-overlay.overlays.emacs
+        ];
+
         darwinConfigurations = let
           username = "${secrets.work.username}";
           system = "aarch64-darwin";
@@ -76,9 +90,16 @@
             specialArgs = inputs // {inherit username;};
             modules = [
               ./hosts/darwin-work/configuration.nix
+              {
+                nixpkgs.overlays = [
+                  self.overlays.default
+                ];
+              }
               home-manager.darwinModules.home-manager
               {
                 home-manager = {
+                  useGlobalPkgs = true;
+                  useUserPackages = true;
                   users."${username}" = import ./hosts/darwin-work/home.nix;
                   extraSpecialArgs = {inherit inputs username secrets;};
                 };
@@ -97,12 +118,16 @@
             specialArgs = inputs // {inherit username secrets;};
             modules = [
               ./hosts/nixos-desktop/configuration.nix
+              {
+                nixpkgs.overlays = [
+                  self.overlays.default
+                ];
+              }
               home-manager.nixosModules.home-manager
               {
                 home-manager = {
                   useGlobalPkgs = true;
                   useUserPackages = true;
-
                   users."${username}" = import ./hosts/nixos-desktop/home.nix;
                   extraSpecialArgs = {inherit inputs username secrets;};
                 };
