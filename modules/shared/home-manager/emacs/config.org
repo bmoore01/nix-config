@@ -13,8 +13,8 @@ Define constants
   (defconst custom-file (concat user-emacs-directory "config/custom.el")
     "File to store emacs custom variables.")
 
-  (defconst user-backups-directory (concat user-emacs-directory "backups/")
-    "Directory for storing all the emacs backup files")
+  (defconst emacs-data-dir (concat (getenv "XDG_DATA_HOME") "/emacs")
+    "Directory to store emacs runtime data.")
 
   (defconst user-snippets-directory (concat user-emacs-directory "snippets/")
     "Directory for yasnippet code snippet files")
@@ -29,16 +29,13 @@ Setup packages used throughout the configuration which should be defined early o
 Set :ensure t for all use-package calls
 #+BEGIN_SRC emacs-lisp
   (setq use-package-always-ensure t)
-
   (use-package bind-key)
 #+END_SRC
 
 Setup general and hydra to make defining keybinds easier
 #+BEGIN_SRC emacs-lisp
   (use-package general
-    :after evil
-    :init (general-evil-setup))
-    ;;:config (general-evil-setup t))
+    :after evil)
 
   (use-package hydra
     :defer 1)
@@ -127,17 +124,21 @@ Put custom variables into a differnt file than init.el
   (load custom-file))
 #+END_SRC
 
-Set emacs backup file settings
+Turn off bell
 #+BEGIN_SRC emacs-lisp
-  (setq create-lockfiles nil
-	make-backup-files nil
+	  (setq ring-bell-function 'ignore)
+#+END_SRC
+
+Set emacs backup file settings put lockfiles and autosave files in data directory
+#+BEGIN_SRC emacs-lisp
+  (setq create-lockfiles t
+	make-backup-files t
 	backup-by-copying t
-	backup-directory-alist '(user-backups-directory)
 	delete-old-versions t
-	ring-bell-function 'ignore
-	kept-new-versions 6
-	kept-old-versions 2
-	version-control t)
+	version-control t
+	vc-make-backup-files t
+	auto-save-file-name-transforms `(("." ,(concat emacs-data-dir "/autosaves") t))
+	backup-directory-alist `(("." . ,(concat emacs-data-dir "/backup"))))
 #+END_SRC
 *** Keybinds
 #+BEGIN_SRC emacs-lisp
