@@ -284,18 +284,6 @@ Find file keybindings
 Grep for file patterns keybindings
 Start consult ripgrep with selected text if there is any
 #+BEGIN_SRC emacs-lisp
-
-  ;;   (defun wrapper/consult-ripgrep (&optional dir given-initial)
-  ;;   "Pass the region to consult-ripgrep if available.
-
-  ;; DIR and GIVEN-INITIAL match the method signature of `consult-wrapper'."
-  ;;   (interactive "P")
-  ;;   (let ((initial
-  ;;	   (or given-initial
-  ;;	       (when (use-region-p)
-  ;;		 (buffer-substring-no-properties (region-beginning) (region-end))))))
-  ;;     (consult-ripgrep dir initial)))
-
   (defun wrapper/consult-ripgrep (&optional dir given-initial)
     "Pass the region to consult-ripgrep if available.
 
