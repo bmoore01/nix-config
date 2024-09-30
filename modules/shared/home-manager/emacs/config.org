@@ -95,18 +95,6 @@ a collection of keybinds
 #+END_SRC
 ** Mac Specific Config
 
-This snippet sets the path in mac so that Emacs can find mac programs on the machine
-TODO: Investigate if I can remove this once my config is in nix
-#+BEGIN_SRC emacs-lisp
-  (when (memq window-system '(mac ns x))
-    ;; set exec path for projectile and stuff
-    (add-path-string-to-exec-path
-     "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:usr/local/opt/llvm/bin:/usr/bin")
-    (use-package exec-path-from-shell
-      :config
-      (exec-path-from-shell-initialize)))
-    #+END_SRC
-
 Switch mac keybinds so set super -> meta and meta -> super
 #+BEGIN_SRC emacs-lisp
   (setq mac-option-modifier 'super)
@@ -126,7 +114,7 @@ Put custom variables into a differnt file than init.el
 
 Turn off bell
 #+BEGIN_SRC emacs-lisp
-	  (setq ring-bell-function 'ignore)
+  (setq ring-bell-function 'ignore)
 #+END_SRC
 
 Set emacs backup file settings put lockfiles and autosave files in data directory

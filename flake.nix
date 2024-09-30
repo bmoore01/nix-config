@@ -50,91 +50,90 @@
 
       systems = ["aarch64-darwin" "x86_64-linux"];
       perSystem = {
-        config,
-        self',
-        inputs',
-        pkgs,
-        system,
-        ...
+	config,
+	self',
+	inputs',
+	pkgs,
+	system,
+	...
       }: {
-        _module.args.pkgs = import self.inputs.nixpkgs {
-          inherit system;
-          overlays = [self.overlays.default];
-          config.allowUnfree = true;
-        };
+	_module.args.pkgs = import self.inputs.nixpkgs {
+	  inherit system;
+	  overlays = [self.overlays.default];
+	  config.allowUnfree = true;
+	};
 
-        devShells = {
-          default = pkgs.mkShell {
-            name = "nix-config";
-            packages = with pkgs; [nil];
-          };
-        };
+	devShells = {
+	  default = pkgs.mkShell {
+	    name = "nix-config";
+	    packages = with pkgs; [nil];
+	  };
+	};
 
-        treefmt = {
-          projectRootFile = "flake.nix";
-          programs.alejandra.enable = true;
-        };
+	treefmt = {
+	  projectRootFile = "flake.nix";
+	  programs.alejandra.enable = true;
+	};
       };
 
       flake = {
-        overlays.default = inputs.nixpkgs.lib.composeManyExtensions [
-          inputs.emacs-overlay.overlays.emacs
-        ];
+	overlays.default = inputs.nixpkgs.lib.composeManyExtensions [
+	  inputs.emacs-overlay.overlays.emacs
+	];
 
-        darwinConfigurations = let
-          username = "${secrets.work.username}";
-          system = "aarch64-darwin";
-        in {
-          "${secrets.work.hostname}" = nix-darwin.lib.darwinSystem {
-            inherit system;
-            specialArgs = inputs // {inherit username;};
-            modules = [
-              ./hosts/darwin-work/configuration.nix
-              {
-                nixpkgs.overlays = [
-                  self.overlays.default
-                ];
-              }
-              home-manager.darwinModules.home-manager
-              {
-                home-manager = {
-                  useGlobalPkgs = true;
-                  useUserPackages = true;
-                  users."${username}" = import ./hosts/darwin-work/home.nix;
-                  extraSpecialArgs = {inherit inputs username secrets;};
-                };
-                users.users."${username}".home = "/Users/${username}";
-              }
-            ];
-          };
-        };
+	darwinConfigurations = let
+	  username = "${secrets.work.username}";
+	  system = "aarch64-darwin";
+	in {
+	  "${secrets.work.hostname}" = nix-darwin.lib.darwinSystem {
+	    inherit system;
+	    specialArgs = inputs // {inherit username;};
+	    modules = [
+	      ./hosts/darwin-work/configuration.nix
+	      {
+		nixpkgs.overlays = [
+		  self.overlays.default
+		];
+	      }
+	      home-manager.darwinModules.home-manager
+	      {
+		home-manager = {
+		  useGlobalPkgs = true;
+		  users."${username}" = import ./hosts/darwin-work/home.nix;
+		  extraSpecialArgs = {inherit inputs username secrets;};
+		};
+		users.users."${username}".home = "/Users/${username}";
+	      }
+	    ];
+	  };
+	};
 
-        nixosConfigurations = let
-          username = "${secrets.personal.username}";
-          system = "x86_64-linux";
-        in {
-          "${secrets.personal.hostname}" = nixpkgs.lib.nixosSystem {
-            inherit system;
-            specialArgs = inputs // {inherit username secrets;};
-            modules = [
-              ./hosts/nixos-desktop/configuration.nix
-              {
-                nixpkgs.overlays = [
-                  self.overlays.default
-                ];
-              }
-              home-manager.nixosModules.home-manager
-              {
-                home-manager = {
-                  useGlobalPkgs = true;
-                  useUserPackages = true;
-                  users."${username}" = import ./hosts/nixos-desktop/home.nix;
-                  extraSpecialArgs = {inherit inputs username secrets;};
-                };
-              }
-            ];
-          };
-        };
+	nixosConfigurations = let
+	  username = "${secrets.personal.username}";
+	  system = "x86_64-linux";
+	in {
+	  "${secrets.personal.hostname}" = nixpkgs.lib.nixosSystem {
+	    inherit system;
+	    specialArgs = inputs // {inherit username secrets;};
+	    modules = [
+	      ./hosts/nixos-desktop/configuration.nix
+	      {
+		nixpkgs.overlays = [
+		  self.overlays.default
+		];
+	      }
+	      home-manager.nixosModules.home-manager
+	      {
+		home-manager = {
+		  useGlobalPkgs = true;
+		  useUserPackages = true;
+		  users."${username}" = import ./hosts/nixos-desktop/home.nix;
+		  extraSpecialArgs = {inherit inputs username secrets;};
+		};
+	      }
+	    ];
+	  };
+	};
       };
     };
 }
