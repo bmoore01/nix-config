@@ -23,9 +23,8 @@ Define constants
 ** Utility packages
 Setup packages used throughout the configuration which should be defined early on
 
-Set :ensure t for all use-package calls
+Add bind key so use-package can use the :bind functionality
 #+BEGIN_SRC emacs-lisp
-  ;; (setq use-package-always-ensure t)
   (use-package bind-key)
 #+END_SRC
 
@@ -49,6 +48,15 @@ Show which keybindings are asigned to what
 ** Utility Functions
 These are declared first they can be used throughout the config file
 
+This method switches between relative and regular line numbering
+#+BEGIN_SRC emacs-lisp
+  ;;;###autoload
+  (defun relative-line-numbers-toggle ()
+    "Allow for toggling relative line number mode without re-initialising line number mode."
+    (interactive)
+    (setq display-line-numbers (if (eq display-line-numbers t) 'relative t)))
+#+END_SRC
+
 This macro defines a keybind 'layer' similar to spacemacs where you hit the leader key then a key for
 a collection of keybinds
 #+BEGIN_SRC emacs-lisp
@@ -58,28 +66,29 @@ a collection of keybinds
   after leader in order to acess the bindings specified in this macro"
     (declare (indent defun))
     (let (
-	  (other-keys (cl-loop for (k v) on params by 'cddr
-			       unless (or (eq k :which-key) (eq k :key) (stringp k))
-			       collect k
-			       and collect v))
-	  (maps (cl-loop for (k v)  on params by 'cddr
-			 if (stringp k)
-			 collect (concat key k)
-			 and collect v)))
+          (other-keys (cl-loop for (k v) on params by 'cddr
+                               unless (or (eq k :which-key) (eq k :key) (stringp k))
+                               collect k
+                               and collect v))
+          (maps (cl-loop for (k v)  on params by 'cddr
+                         if (stringp k)
+                         collect (concat key k)
+                         and collect v)))
       `(general-define-key
-	:prefix ,leader
-	:states ',states
-	,key '(:ignore t :which-key ,(symbol-name name))
-	,@other-keys
-	,@maps)))
+        :prefix ,leader
+        :states ',states
+        ,key '(:ignore t :which-key ,(symbol-name name))
+        ,@other-keys
+        ,@maps)))
 #+END_SRC
-** Emacs Settings
+** Mac Specific Config
 Switch mac keybinds so set super -> meta and meta -> super
 #+BEGIN_SRC emacs-lisp
   (setq mac-option-modifier 'super)
   (setq mac-command-modifier 'meta)
 #+END_SRC
 
+** Emacs Settings
 Replace all yes and no prompts with y/n prompts
 #+BEGIN_SRC emacs-lisp
 (fset 'yes-or-no-p 'y-or-n-p)
@@ -93,13 +102,13 @@ Turn off bell
 Set emacs backup file settings put lockfiles and autosave files in data directory
 #+BEGIN_SRC emacs-lisp
   (setq create-lockfiles t
-	make-backup-files t
-	backup-by-copying t
-	delete-old-versions t
-	version-control t
-	vc-make-backup-files t
-	auto-save-file-name-transforms `(("." ,(concat emacs-data-dir "/autosaves") t))
-	backup-directory-alist `(("." . ,(concat emacs-data-dir "/backup"))))
+        make-backup-files t
+        backup-by-copying t
+        delete-old-versions t
+        version-control t
+        vc-make-backup-files t
+        auto-save-file-name-transforms `((".*" ,(concat emacs-data-dir "/autosaves/") t))
+        backup-directory-alist `(("." . ,(concat emacs-data-dir "/backup"))))
 #+END_SRC
 *** Keybinds
 #+BEGIN_SRC emacs-lisp
@@ -118,7 +127,7 @@ Split windows for popups horizontally
 #+BEGIN_SRC emacs-lisp
 (setq split-width-threshold nil)
 #+END_SRC
-*** Functions
+********** Functions
 These methods split the windows horizontally or vertically and then select the newly created windows.
 #+BEGIN_SRC emacs-lisp
   (defun split-window-and-follow-horizontally ()
@@ -154,10 +163,21 @@ These methods split the windows horizontally or vertically and then select the n
    "C-h" 'evil-window-left
 
    ;; window resize bindings
-   "s-j" '(lambda () (interactive) (evil-window-decrease-height 5))
-   "s-k" '(lambda () (interactive) (evil-window-increase-height 5))
-   "s-h" '(lambda () (interactive) (evil-window-decrease-width 5))
-   "s-l" '(lambda () (interactive) (evil-window-increase-width 5)))
+   "M-j" '(lambda () (interactive) (evil-window-decrease-height 5))
+   "M-k" '(lambda () (interactive) (evil-window-increase-height 5))
+   "M-h" '(lambda () (interactive) (evil-window-decrease-width 5))
+   "M-l" '(lambda () (interactive) (evil-window-increase-width 5)))
+
+  ;; We need to redo this so it works in org mode specifically too
+  (general-define-key
+   :states '(normal visual)
+   :keymaps 'org-mode-map
+
+   ;; window navigation
+   "C-j" 'evil-window-down
+   "C-k" 'evil-window-up
+   "C-l" 'evil-window-right
+   "C-h" 'evil-window-left)
 #+END_SRC
 ** Buffer Settings
 Always kill compilation buffer and scroll to the latest line of output
@@ -179,36 +199,19 @@ Define buffer utility functions
       "Create a new buffer called untitled(<n>)."
       (interactive)
       (let ((newbuf (generate-new-buffer-name "untitled")))
-	(switch-to-buffer newbuf)))
+        (switch-to-buffer newbuf)))
 
     (defun switch-to-scratch-buffer ()
       "Switch to the `*scratch*' buffer or create it if needed."
       (interactive)
       (let ((exists (get-buffer "*scratch*")))
-	(switch-to-buffer (get-buffer-create "*scratch*"))
-	(when (and (not exists)
-		   (not (eq major-mode scratch-mode))
-		   (fboundp scratch-mode))
-	  (funcall scratch-mode))))
+        (switch-to-buffer (get-buffer-create "*scratch*"))
+        (when (and (not exists)
+                   (not (eq major-mode scratch-mode))
+                   (fboundp scratch-mode))
+          (funcall scratch-mode))))
 #+END_SRC
 
-Define predicate so next and previous buffers skip emacs special buffers
-#+BEGIN_SRC emacs-lisp
-  (defun emacs-special-buffer-name-p (name)
-    "If NAME is surrounded by asterisks return t otherwise return nil."
-    (if (string-match-p "\\*.*\\*" name)
-	t))
-
-  (defvar my-skippable-buffers '("Shell-popup")
-    "Buffer names ignored by `next-buffer' and `previous-buffer'.")
-
-  (defun my-buffer-predicate (buffer)
-    "Tell `next-buffer' and `previous-buffer' to skip the BUFFER if it's name is listed in `my-skippable-buffers' or is an EMACS special buffer."
-    (if (or (emacs-special-buffer-name-p (buffer-name buffer)) (member (buffer-name buffer) my-skippable-buffers))
-	nil
-      t))
-  (set-frame-parameter nil 'buffer-predicate 'my-buffer-predicate)
-#+END_SRC
 *** Keybinds
 #+BEGIN_SRC emacs-lisp
   (create-leader-layer buffers
@@ -221,6 +224,7 @@ Define predicate so next and previous buffers skip emacs special buffers
     "n" 'next-buffer
     "p" 'previous-buffer)
 #+END_SRC
+
 ** Search Settings
 Everything related to finding files/parts of a file
 
@@ -233,12 +237,12 @@ Find file keybindings
   DIR and GIVEN-INITIAL match the method signature of `consult-wrapper'."
     (interactive "P")
     (let ((initial
-	   (or given-initial
-	       (when (use-region-p)
-		 (buffer-substring-no-properties (region-beginning) (region-end))))))
+     (or given-initial
+         (when (use-region-p)
+     (buffer-substring-no-properties (region-beginning) (region-end))))))
       (progn
-	(evil-normal-state)
-	(consult-fd dir initial))))
+  (evil-normal-state)
+  (consult-fd dir initial))))
 
   (create-leader-layer files
     :key "f"
@@ -255,16 +259,29 @@ Start consult ripgrep with selected text if there is any
   DIR and GIVEN-INITIAL match the method signature of `consult-wrapper'."
     (interactive "P")
     (let ((initial
-	   (or given-initial
-	       (when (use-region-p)
-		 (buffer-substring-no-properties (region-beginning) (region-end))))))
+           (or given-initial
+               (when (use-region-p)
+                 (buffer-substring-no-properties (region-beginning) (region-end))))))
       (progn
-	(evil-normal-state)
-	(consult-ripgrep dir initial))))
+        (evil-normal-state)
+        (consult-ripgrep dir initial))))
+
+  (defun wrapper/consult-line (&optional dir given-initial)
+    "Pass the region to consult-line if available.
+
+  DIR and GIVEN-INITIAL match the method signature of `consult-wrapper'."
+    (interactive "P")
+    (let ((initial
+           (or given-initial
+               (when (use-region-p)
+                 (buffer-substring-no-properties (region-beginning) (region-end))))))
+      (progn
+        (evil-normal-state)
+        (consult-line dir initial))))
 
   (general-define-key
    :states '(normal visual)
-   "M-f" 'consult-line
+   "M-f" 'wrapper/consult-line
    "M-F" 'wrapper/consult-ripgrep)
 #+END_SRC
 ** Text Editing Settings
@@ -274,12 +291,14 @@ Always highlight parens immediately on hover
   (show-paren-mode 1)
 #+END_SRC
 
-Use spaces instead of tabs and set them a width of 4 characters
+Use spaces instead of tabs and set them a width of 2 characters
 #+BEGIN_SRC emacs-lisp
-  (setq tab-width 4)
-  (setq evil-shift-width tab-width)
+  (setq-default tab-width 2)
+  (setq-default c-basic-offset 2)
+  (setq
+   evil-shift-width tab-width)
 
-  (indent-tabs-mode -1)
+  (setq-default indent-tabs-mode nil)
 #+END_SRC
 
 Show line numbers only in code buffers
@@ -287,8 +306,11 @@ Show line numbers only in code buffers
   (add-hook 'prog-mode-hook #'display-line-numbers-mode)
 #+END_SRC
 
-Cleanup whitespace when saving
+Whitespace settings
 #+BEGIN_SRC emacs-lisp
+  (setq whitespace-style
+        '(face tabs spaces trailing lines space-before-tab indentation empty space-after-tab space-mark tab-mark missing-newline-at-eof))
+
   (add-hook 'before-save-hook 'whitespace-cleanup)
 #+END_SRC
 
@@ -297,7 +319,7 @@ Cleanup whitespace when saving
   (general-define-key
    :states '(normal visual)
    "TAB" 'indent-region
-   "M-s-l" 'format-all-buffer
+   ;; "M-s-l" 'format-all-buffer
    "M-b" 'xref-find-references
    "M-B" 'xref-find-definitions)
 #+END_SRC
@@ -312,13 +334,16 @@ Remap SPC SPC to M-x function
 
 Open different tools
 #+BEGIN_SRC emacs-lisp
-    (create-leader-layer open
-      :key "o"
-      "s" 'shell-pop
-      "g" 'magit-status
-      "a" 'org-agenda
-      "c" 'org-capture)
+  (create-leader-layer open
+    :key "o"
+    "s" 'shell-pop
+    "g" 'magit-status
+    "a" 'org-agenda
+    "c" 'org-capture
+    "e" 'flymake-show-buffer-diagnostics
+    "E" 'flymake-show-project-diagnostics)
 #+END_SRC
+
 Toggle settings
 #+BEGIN_SRC emacs-lisp
   ;;;###autoload
@@ -329,9 +354,9 @@ Toggle settings
 
   (create-leader-layer toggles
     :key "t"
-    ;;:states '(normal visual)
     "d" 'corfu-popupinfo-toggle
     "T" 'modus-themes-toggle
+    "w" 'whitespace-mode
     "n" 'relative-line-numbers-toggle)
 #+END_SRC
 
@@ -357,18 +382,18 @@ General keybinds for major mode prefix
     :custom (evil-undo-system 'undo-redo)
     :init
     (setq evil-want-keybinding nil
-	  evil-want-C-u-scroll t
-	  evil-respect-visual-line-mode t
-	  evil-search-module 'evil-search)
+          evil-want-C-u-scroll t
+          evil-respect-visual-line-mode t
+          evil-search-module 'evil-search)
     (evil-mode t)
     :hook
     ((evil-mode . (lambda ()
-		    (dolist (mode '(custom-mode
-				    eshell-mode
-				    git-rebase-mode
-				    erc-mode
-				    term-mode))
-		      (add-to-list 'evil-emacs-state-modes mode)))))
+                    (dolist (mode '(custom-mode
+                                    eshell-mode
+                                    git-rebase-mode
+                                    erc-mode
+                                    term-mode))
+                      (add-to-list 'evil-emacs-state-modes mode)))))
     :config
     ;; Set initial state for some buffers that are insert by default
     (evil-set-initial-state 'messages-buffer-mode 'normal)
@@ -457,12 +482,12 @@ Hide additiona minor modes in modeline under a button
     :config
     ;; Add all your customizations prior to loading the themes
     (setq modus-themes-italic-constructs t
-	  modus-themes-bold-constructs nil)
+          modus-themes-bold-constructs nil)
 
     ;; Maybe define some palette overrides, such as by using our presets
     (setq modus-themes-common-palette-overrides
-	  modus-themes-preset-overrides-intense
-	  modus-themes-to-toggle '(modus-operandi-deuteranopia modus-vivendi-tinted))
+          modus-themes-preset-overrides-intense
+          modus-themes-to-toggle '(modus-operandi-deuteranopia modus-vivendi-tinted))
 
     (load-theme 'modus-vivendi-tinted))
 #+END_SRC
@@ -491,10 +516,10 @@ Hide additiona minor modes in modeline under a button
 
   (use-package vertico
     :bind (:map vertico-map
-		("C-u" . vertico-scroll-up)
-		("C-d" . vertico-scroll-down)
-		("C-k" . vertico-previous)
-		("C-j" . vertico-next))
+                ("C-u" . vertico-scroll-up)
+                ("C-d" . vertico-scroll-down)
+                ("C-k" . vertico-previous)
+                ("C-j" . vertico-next))
     :init (vertico-mode))
 
   (use-package consult)
@@ -542,7 +567,7 @@ This function allows you to do one action if inside a projectile project and ano
     "Bind to `projectile-function' if current dir is projectile project and `regular-function' otherwise."
     (interactive)
     (if (projectile-project-p)
-	(call-interactively projectile-function)
+        (call-interactively projectile-function)
       (call-interactively regular-function)))
 #+END_SRC
 *** Keybinds
@@ -586,11 +611,18 @@ Configure corfu with icons for inline code completion
     (corfu-auto t)
     (corfu-cycle t)
     :bind (:map corfu-map ;; TODO: fix this
-		("C-u" . corfu-popupinfo-scroll-up)
-		("C-d" . corfu-popupinfo-scroll-down))
+                ("C-u" . corfu-popupinfo-scroll-up)
+                ("C-d" . corfu-popupinfo-scroll-down))
     :init
     (global-corfu-mode)
     (corfu-popupinfo-mode))
+
+  (use-package cape
+    :bind ("C-c p" . cape-prefix-map) ;; Alternative keys: M-p, M-+, ...
+    :init
+    (add-hook 'completion-at-point-functions #'cape-dabbrev)
+    (add-hook 'completion-at-point-functions #'cape-file)
+    (add-hook 'completion-at-point-functions #'cape-elisp-block))
 
   (use-package kind-icon
     :after corfu
@@ -644,60 +676,101 @@ Configure all syntax hilighting to use treesitter if possible
 
 Enable code formatting on all code files
 #+BEGIN_SRC emacs-lisp
-(use-package format-all
-  :hook (prog-mode . format-all-ensure-formatter))
+  (use-package editorconfig
+    :ensure t
+    :config
+    (editorconfig-mode 1))
+
+  ;; (use-package format-all
+  ;;   :hook (prog-mode . format-all-ensure-formatter))
 #+END_SRC
 
-** Language Server Protocol
+** Eglot
 #+BEGIN_SRC emacs-lisp
-(use-package lsp-mode
-  :after yasnippet
-  :hook ((c-mode          ; clangd
-	  c++-mode        ; clangd
-	  c-or-c++-mode   ; clangd
-	  rust-mode-hook
-	  java-ts-mode       ; eclipse-jdtls
-	  typescript-mode ; ts-ls (tsserver wrapper)
-	  python-base-mode     ; pyright
-	  ) . lsp-deferred)
-  :commands lsp
-  :config
-  (setq lsp-auto-guess-root t)
-  (setq lsp-log-io nil)
-  (setq lsp-restart 'auto-restart)
-  (setq lsp-enable-on-type-formatting nil)
-  (setq lsp-modeline-code-actions-enable nil)
-  (setq lsp-modeline-diagnostics-enable nil)
-  (setq lsp-headerline-breadcrumb-enable t)
-  (setq lsp-semantic-tokens-enable nil)
-  (setq lsp-enable-folding nil)
-  (setq lsp-enable-imenu nil)
-  (setq read-process-output-max (* 1024 1024)) ;; 1MB
-  (setq lsp-idle-delay 0.2))
+  (use-package eglot
+    :after projectile
+    :config
+    (add-to-list 'eglot-server-programs '((nix-ts-mode) . ("nil"))))
 
-(use-package lsp-ui
-  :config
-  (setq lsp-prefer-flymake nil
-	lsp-ui-doc-enable t
-	lsp-ui-doc-delay 0.0
-	lsp-ui-doc-position 'at-point
-	lsp-ui-doc-show-with-mouse nil
-	lsp-ui-sideline-enable nil))
+    ;; Don't cache cape completions for eglot
+    (advice-add 'eglot-completion-at-point :around #'cape-wrap-buster)
+    (add-hook 'prog-mode-hook #'flymake-mode)
+    (add-hook 'prog-mode-hook #'eglot-ensure)
 #+END_SRC
+
 
 *** Keybinds
 #+BEGIN_SRC emacs-lisp
   (general-define-key
     :states 'normal
     :keymaps 'lsp-mode-map
-    "M-r" 'lsp-find-references
-    "M-D" 'dap-hydra
-    "SPC R" 'lsp-rename
-    "M-RET" 'dap-eval)
+    "M-N" 'eglot-code-actions
+    "SPC R" 'eglot-rename)
+#+END_SRC
+
+** Dape mode
+#+BEGIN_SRC emacs-lisp
+  (use-package dape
+  :preface
+  ;; By default dape shares the same keybinding prefix as `gud'
+  ;; If you do not want to use any prefix, set it to nil.
+  ;; (setq dape-key-prefix "\C-x\C-a")
+
+  :hook
+  Save breakpoints on quit
+  ((kill-emacs . dape-breakpoint-save)
+  Load breakpoints on startup
+   (after-init . dape-breakpoint-load))
+
+  :init
+  ;; To use window configuration like gud (gdb-mi)
+  ;; (setq dape-buffer-window-arrangement 'gud)
+
+  :config
+  ;; Info buffers to the right
+  ;; (setq dape-buffer-window-arrangement 'right)
+
+  ;; Global bindings for setting breakpoints with mouse
+  (dape-breakpoint-global-mode)
+
+  ;; Pulse source line (performance hit)
+  ;; (add-hook 'dape-display-source-hook 'pulse-momentary-highlight-one-line)
+
+  ;; To not display info and/or buffers on startup
+  ;; (remove-hook 'dape-start-hook 'dape-info)
+  ;; (remove-hook 'dape-start-hook 'dape-repl)
+
+  ;; To display info and/or repl buffers on stopped
+  ;; (add-hook 'dape-stopped-hook 'dape-info)
+  (add-hook 'dape-stopped-hook 'dape-repl)
+
+  ;; Kill compile buffer on build success
+  (add-hook 'dape-compile-hook 'kill-buffer)
+
+  ;; Save buffers on startup, useful for interpreted languages
+  (add-hook 'dape-start-hook (lambda () (save-some-buffers t t)))
+
+  ;; Projectile users
+  (setq dape-cwd-fn 'projectile-project-root))
+#+END_SRC
+
+*** Keybinds
+#+BEGIN_SRC emacs-lisp
+  (create-leader-layer debug
+    :key "d"
+    "s" 'dape-next
+    "S" 'dape-step-in
+    "U" 'dape-step-out
+    "r" 'dape-repl
+    "b" 'dape-breakpoint-toggle
+    "R" 'dape-restart
+    "q" 'dape-quit)
 #+END_SRC
 * Org Mode Configuration
 Beautify org-mode UI
 #+BEGIN_SRC emacs-lisp
+  (setq org-startup-folded t)
+
   (use-package org-modern
     :init
     (setq
@@ -734,6 +807,13 @@ Beautify org-mode UI
    "TAB" 'org-cycle
    "RET" 'org-open-at-point
    "-" 'org-cycle-list-bullet)
+
+  (create-leader-layer major-mode
+      :key "m"
+      :states '(normal visual)
+      :keymaps '(org-mode-map)
+      "b" 'org-babel-execute-buffer
+      "r" 'org-babel-execute-src-block)
 #+END_SRC
 * Language Specific Configuration
 ** Emacs Lisp
@@ -755,17 +835,12 @@ Beautify org-mode UI
 #+END_SRC
 ** C/C++
 #+BEGIN_SRC emacs-lisp
-(use-package ccls
-  :hook ((c-mode c++-mode objc-mode cuda-mode) .
-	 (lambda () (require 'ccls) (lsp))))
+;; (use-package ccls
+;;   :hook ((c-mode c++-mode objc-mode cuda-mode) .
+;;          (lambda () (require 'ccls) (lsp))))
 #+END_SRC
 ** Python
-Setup pyright for use with lsp mode
 #+BEGIN_SRC emacs-lisp
-  (use-package lsp-pyright
-    :hook (python-base-mode . (lambda () (require 'lsp-pyright)))
-    :init (when (executable-find "python3")
-	    (setq lsp-pyright-python-executable-cmd "python3")))
 #+END_SRC
 
 ** Nix
@@ -779,4 +854,11 @@ Set and store the right environment per buffer if it is part of a nix flake with
 #+BEGIN_SRC emacs-lisp
   (use-package envrc
   :hook (after-init . envrc-global-mode))
+#+END_SRC
+
+** Kotlin
+
+#+BEGIN_SRC emacs-lisp
+  (use-package kotlin-ts-mode
+    :mode "\\.kt\\'")
 #+END_SRC

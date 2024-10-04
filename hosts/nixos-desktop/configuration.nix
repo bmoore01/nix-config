@@ -120,7 +120,13 @@
 
   # Setup opengl
   hardware = {
-    opengl.enable = true;
+    opengl = {
+      enable = true;
+      driSupport = true;
+      driSupport32Bit = true;
+    };
+
+
     # Most wayland compositors need this
     nvidia.modesetting.enable = true;
   };
@@ -134,6 +140,16 @@
 
     # Globally install zsh
     zsh.enable = true;
+
+    # Steam + game settings
+    steam = {
+      enable = true;
+      gamescopeSession.enable = true;
+      remotePlay.openFirewall = true;
+      dedicatedServer.openFirewall = true;
+      localNetworkGameTransfers.openFirewall = true;
+    };
+    gamemode.enable = true;
   };
 
   # List packages installed in system profile. To search, run:
@@ -145,19 +161,20 @@
     neovim
     curl
 
-    # Clipboard for wayland
-    wl-clipboard-x11
+    wl-clipboard-x11 # Clipboard for wayland
 
-    # Headset control
-    headsetcontrol
+    ckb-next # Corsair mouse/keyboard driver
 
-    # Corsair mouse/keyboard driver
-    ckb-next
+    # Gaming stuff
+    mangohud # Hud for monitoring FPS in games
+    lutris # Game launcher
+    heroic # Another Game launcher
+    bottles # Wine manager
   ];
 
   xdg.portal = {
     enable = true;
-    extraPortals = [pkgs.xdg-desktop-portal-gtk];
+    extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
   };
 
   # List services that you want to enable:

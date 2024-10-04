@@ -12,6 +12,7 @@
         extraEmacsPackages = epkgs:
           with epkgs; [
             vterm
+            yasnippet-snippets
             treesit-grammars.with-all-grammars
           ];
       }

@@ -23,5 +23,17 @@
 
     swaybg
     mypaint
+
+    jetbrains.idea-community-bin
+
+    _1password-gui
+
+    # Valve proton
+    protonup
   ];
+
+  # This is so we can install proton GE by running protonup not very declarative :(
+  home.sessionVariables = {
+    STEAM_EXTRA_COMPAT_TOOLS_PATHS = "\${HOME}/.steam/root/compatibilitytools.d";
+  };
 }
