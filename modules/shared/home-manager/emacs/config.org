@@ -10,9 +10,6 @@ Define constants
   (defconst user-secrets-directory (concat user-emacs-directory "private/")
     "Dir ignored by git for, passwords, private keys etc.")
 
-  (defconst custom-file (concat user-emacs-directory "config/custom.el")
-    "File to store emacs custom variables.")
-
   (defconst emacs-data-dir (concat (getenv "XDG_DATA_HOME") "/emacs")
     "Directory to store emacs runtime data.")
 
@@ -28,7 +25,7 @@ Setup packages used throughout the configuration which should be defined early o
 
 Set :ensure t for all use-package calls
 #+BEGIN_SRC emacs-lisp
-  (setq use-package-always-ensure t)
+  ;; (setq use-package-always-ensure t)
   (use-package bind-key)
 #+END_SRC
 
@@ -50,24 +47,7 @@ Show which keybindings are asigned to what
 #+END_SRC
 
 ** Utility Functions
-Theses are declared first they can be used throughout the config file
-
-This method takes a shell-style $PATH and splits them into a list of separate strings per path
-then sets the path environment variable PATH inside emacs to the list of strings
-#+BEGIN_SRC emacs-lisp
-  (defun add-path-string-to-exec-path (str)
-    "Add all paths in STR seperated by colons to the exec path."
-    (mapcar (lambda (s) (setenv "PATH" (concat s))) (split-string str ":")))
-#+END_SRC
-
-This method switches between relative and regular line numbering
-#+BEGIN_SRC emacs-lisp
-  ;;;###autoload
-  (defun relative-line-numbers-toggle ()
-    "Allow for toggling relative line number mode without re-initialising line number mode."
-    (interactive)
-    (setq display-line-numbers (if (eq display-line-numbers t) 'relative t)))
-#+END_SRC
+These are declared first they can be used throughout the config file
 
 This macro defines a keybind 'layer' similar to spacemacs where you hit the leader key then a key for
 a collection of keybinds
@@ -93,23 +73,16 @@ a collection of keybinds
 	,@other-keys
 	,@maps)))
 #+END_SRC
-** Mac Specific Config
-
+** Emacs Settings
 Switch mac keybinds so set super -> meta and meta -> super
 #+BEGIN_SRC emacs-lisp
   (setq mac-option-modifier 'super)
   (setq mac-command-modifier 'meta)
 #+END_SRC
-** Emacs Settings
+
 Replace all yes and no prompts with y/n prompts
 #+BEGIN_SRC emacs-lisp
 (fset 'yes-or-no-p 'y-or-n-p)
-#+END_SRC
-
-Put custom variables into a differnt file than init.el
-#+BEGIN_SRC emacs-lisp
-(when (file-exists-p  custom-file)
-  (load custom-file))
 #+END_SRC
 
 Turn off bell
@@ -187,15 +160,6 @@ These methods split the windows horizontally or vertically and then select the n
    "s-l" '(lambda () (interactive) (evil-window-increase-width 5)))
 #+END_SRC
 ** Buffer Settings
-Disable Completions buffer
-#+BEGIN_SRC emacs-lisp
-  (add-hook 'minibuffer-exit-hook
-	    '(lambda ()
-	       (let ((buffer "*Completions*"))
-		 (and (get-buffer buffer)
-		      (kill-buffer buffer)))))
-#+END_SRC
-
 Always kill compilation buffer and scroll to the latest line of output
 #+BEGIN_SRC emacs-lisp
   (setq-default
@@ -263,9 +227,22 @@ Everything related to finding files/parts of a file
 *** Keybinds
 Find file keybindings
 #+BEGIN_SRC emacs-lisp
+  (defun wrapper/consult-fd (&optional dir given-initial)
+    "Pass the region to consult-fd if available.
+
+  DIR and GIVEN-INITIAL match the method signature of `consult-wrapper'."
+    (interactive "P")
+    (let ((initial
+	   (or given-initial
+	       (when (use-region-p)
+		 (buffer-substring-no-properties (region-beginning) (region-end))))))
+      (progn
+	(evil-normal-state)
+	(consult-fd dir initial))))
+
   (create-leader-layer files
     :key "f"
-    "f" 'consult-fd
+    "f" 'wrapper/consult-fd
     "F" 'find-file)
 #+END_SRC
 
@@ -344,6 +321,12 @@ Open different tools
 #+END_SRC
 Toggle settings
 #+BEGIN_SRC emacs-lisp
+  ;;;###autoload
+  (defun relative-line-numbers-toggle ()
+    "Allow for toggling relative line number mode without re-initialising line number mode."
+    (interactive)
+    (setq display-line-numbers (if (eq display-line-numbers t) 'relative t)))
+
   (create-leader-layer toggles
     :key "t"
     ;;:states '(normal visual)
@@ -354,9 +337,11 @@ Toggle settings
 
 Help keybinds
 #+BEGIN_SRC emacs-lisp
-(create-leader-layer help
-  :key "h"
-  "m" 'consult-man)
+  (create-leader-layer help
+    :key "h"
+    "v" 'describe-variable
+    "f" 'describe-function
+    "m" 'consult-man)
 #+END_SRC
 
 General keybinds for major mode prefix
@@ -420,7 +405,7 @@ Configure jumplist
 #+BEGIN_SRC emacs-lisp
   (general-define-key
    :states '(normal visual)
-   "M-]" 'evil-jump-foreward
+   "M-]" 'evil-jump-forward
    "M-[" 'evil-jump-backward)
 #+END_SRC
 
@@ -713,18 +698,6 @@ Enable code formatting on all code files
 * Org Mode Configuration
 Beautify org-mode UI
 #+BEGIN_SRC emacs-lisp
-  ;; Add frame borders and window dividers
-  ;; Need to set this only for org mode otherwise can be annoying
-  ;; (modify-all-frames-parameters
-  ;;  '((right-divider-width . 40)
-  ;;    (internal-border-width . 40)))
-  ;; (dolist (face '(window-divider
-  ;;		  window-divider-first-pixel
-  ;;		  window-divider-last-pixel))
-  ;;   (face-spec-reset-face face)
-  ;;   (set-face-foreground face (face-attribute 'default :background)))
-  ;; (set-face-background 'fringe (face-attribute 'default :background))
-
   (use-package org-modern
     :init
     (setq
