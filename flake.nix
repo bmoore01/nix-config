@@ -22,6 +22,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    git-hooks-nix = {
+      url = "github:cachix/git-hooks.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     agenix = {
       url = "github:yaxitech/ragenix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -46,7 +51,10 @@
     secrets = builtins.fromJSON (builtins.readFile "${self}/secrets/secrets.json");
   in
     flake-parts.lib.mkFlake {inherit inputs;} {
-      imports = [inputs.treefmt-nix.flakeModule];
+      imports = [
+        inputs.treefmt-nix.flakeModule
+        inputs.git-hooks-nix.flakeModule
+      ];
 
       systems = ["aarch64-darwin" "x86_64-linux"];
       perSystem = {
@@ -67,6 +75,20 @@
           default = pkgs.mkShell {
             name = "nix-config";
             packages = with pkgs; [nil];
+
+            shellHook = ''
+              ${config.pre-commit.installationScript}
+            '';
+          };
+        };
+
+        pre-commit = {
+          check.enable = true;
+          settings.hooks = {
+            check-merge-conflicts.enable = true;
+            # deadnix.enable = true;
+            # flake-checker.enable = true;
+            treefmt.enable = true;
           };
         };
 

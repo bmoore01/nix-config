@@ -126,7 +126,6 @@
       driSupport32Bit = true;
     };
 
-
     # Most wayland compositors need this
     nvidia.modesetting.enable = true;
   };
@@ -174,7 +173,7 @@
 
   xdg.portal = {
     enable = true;
-    extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
+    extraPortals = [pkgs.xdg-desktop-portal-gtk];
   };
 
   # List services that you want to enable:
