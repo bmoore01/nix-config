@@ -5,6 +5,11 @@
 
     enableCompletion = true;
 
+    autosuggestion = {
+      enable = true;
+      highlight = "fg=0";
+    };
+
     oh-my-zsh = {
       enable = true;
       plugins = ["direnv"];
@@ -41,6 +46,8 @@
 
   home.shellAliases = {
     c = "clear";
+
+    history = "history -E | less";
 
     # safe rm
     rm = "rm -i";

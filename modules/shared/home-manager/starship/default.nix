@@ -6,6 +6,7 @@
 
     settings = {
       add_newline = false;
+      command_timeout = 2000;
       scan_timeout = 120;
 
       format = ''

@@ -24,6 +24,18 @@
     agenix.packages."${pkgs.system}".default
   ];
 
+  # Configure redis
+  services.redis = {
+    enable = true;
+    extraConfig = ''
+      maxmemory 256mb
+      maxmemory-policy allkeys-lru
+      save ""
+
+      daemonize yes
+    '';
+  };
+
   # Enable touch ID for sudo
   security.pam.enableSudoTouchIdAuth = true;
 
