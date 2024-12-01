@@ -15,16 +15,23 @@
     ../../modules/nixos/home-manager/waybar
   ];
 
+  services.lorri.enable = true;
+
   home.packages = with pkgs; [
     neovide
 
     discord
+    vesktop # Screen sharing for discord
+
     spotify
 
     swaybg
     mypaint
 
     jetbrains.idea-community-bin
+
+    gf
+    godot_4
 
     _1password-gui
 

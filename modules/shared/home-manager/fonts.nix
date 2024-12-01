@@ -3,7 +3,9 @@
 # --------------------------------------------------------------
 {pkgs, ...}: {
   home.packages = with pkgs; [
-    (nerdfonts.override {fonts = ["Hack"];})
+    (nerdfonts.override {fonts = ["Hack" "JetBrainsMono"];})
     emacs-all-the-icons-fonts
   ];
+
+  fonts.fontconfig.enable = true;
 }

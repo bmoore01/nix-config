@@ -7,9 +7,6 @@
 ** General Variables/Constants
 Define constants
 #+BEGIN_SRC emacs-lisp
-  (defconst user-secrets-directory (concat user-emacs-directory "private/")
-    "Dir ignored by git for, passwords, private keys etc.")
-
   (defconst emacs-data-dir (concat (getenv "XDG_DATA_HOME") "/emacs")
     "Directory to store emacs runtime data.")
 
@@ -105,8 +102,10 @@ Set emacs backup file settings put lockfiles and autosave files in data director
         make-backup-files t
         backup-by-copying t
         delete-old-versions t
+        delete-by-moving-to-trash t
         version-control t
         vc-make-backup-files t
+        pixel-scroll-precision-mode t
         auto-save-file-name-transforms `((".*" ,(concat emacs-data-dir "/autosaves/") t))
         backup-directory-alist `(("." . ,(concat emacs-data-dir "/backup"))))
 #+END_SRC
@@ -116,16 +115,18 @@ Set emacs backup file settings put lockfiles and autosave files in data director
   (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
 #+END_SRC
 ** Font Settings
-Set default font to [[https://sourcefoundry.org/hack/][hack]] and the cursor type to bar
+Set default font and the cursor type to bar
 #+BEGIN_SRC emacs-lisp
-  (set-face-attribute 'default nil :font "Hack-14")
+  (set-face-attribute 'default nil :family "JetBrainsMono Nerd Font"  :height 160)
 
   (setq-default cursor-type 'bar)
 #+END_SRC
 ** Window Settings
 Split windows for popups horizontally
 #+BEGIN_SRC emacs-lisp
-(setq split-width-threshold nil)
+  (setq split-width-threshold nil)
+
+  ;; (setq-default display-buffer-alist '());
 #+END_SRC
 ********** Functions
 These methods split the windows horizontally or vertically and then select the newly created windows.
@@ -187,6 +188,17 @@ Always kill compilation buffer and scroll to the latest line of output
    compilation-scroll-output t)
 #+END_SRC
 
+Skip buffers when hitting next and previous buffer
+#+BEGIN_SRC emacs-lisp
+  (defun skippable-buffers (_window buffer _bury-or-kill)
+    "Function for `switch-to-prev-buffer-skip'."
+    (string-match "\\*[^*]+\\*" (buffer-name buffer)))
+  (setq switch-to-prev-buffer-skip 'skippable-buffers)
+
+  ;; Can use this instead but doesn't seem to work currently
+  ;; (setq switch-to-prev-buffer-skip-regexp '("\\*[^*]+\\*"))
+#+END_SRC
+
 Setup scratch buffer
 #+BEGIN_SRC emacs-lisp
   (defvar scratch-mode 'lisp-interaction-mode
@@ -227,6 +239,26 @@ Define buffer utility functions
 
 ** Search Settings
 Everything related to finding files/parts of a file
+
+#+BEGIN_SRC emacs-lisp
+  (use-package neotree
+  :custom
+  (neo-show-hidden-files t)                ;; By default shows hidden files (toggle with H)
+  (neo-theme 'nerd)                        ;; Set the default theme for Neotree to 'nerd' for a visually appealing look.
+  (neo-vc-integration '(face char))        ;; Enable VC integration to display file states with faces (color coding) and characters (icons).
+  :config
+      (setq neo-theme 'nerd-icons))         ;; Set the theme to 'nerd-icons' if nerd fonts are available.
+
+  (use-package dired
+  :ensure nil                                                ;; This is built-in, no need to fetch it.
+  :custom
+  (dired-listing-switches "-lah --group-directories-first")  ;; Display files in a human-readable format and group directories first.
+  (dired-kill-when-opening-new-dired-buffer t))               ;; Close the previous buffer when opening a new `dired' instance.
+
+  (use-package nerd-icons-dired
+  :hook
+  (dired-mode . nerd-icons-dired-mode))
+#+END_SRC
 
 *** Keybinds
 Find file keybindings
@@ -284,11 +316,22 @@ Start consult ripgrep with selected text if there is any
    "M-f" 'wrapper/consult-line
    "M-F" 'wrapper/consult-ripgrep)
 #+END_SRC
+
 ** Text Editing Settings
-Always highlight parens immediately on hover
+Always highlight parens immediately on hover and highlight current line
 #+BEGIN_SRC emacs-lisp
   (setq-default show-paren-delay 0)
   (show-paren-mode 1)
+
+  (dolist (mode '(text-mode-hook
+                  conf-mode-hook
+                  prog-mode-hook))
+    (add-hook mode #'hl-line-mode))
+#+END_SRC
+
+Keep buffers up to date with their corrosponding files
+#+BEGIN_SRC emacs-lisp
+  (global-auto-revert-mode 1)
 #+END_SRC
 
 Use spaces instead of tabs and set them a width of 2 characters
@@ -303,7 +346,10 @@ Use spaces instead of tabs and set them a width of 2 characters
 
 Show line numbers only in code buffers
 #+BEGIN_SRC emacs-lisp
-  (add-hook 'prog-mode-hook #'display-line-numbers-mode)
+        (dolist (mode '(text-mode-hook
+                        conf-mode-hook
+                        prog-mode-hook))
+          (add-hook mode #'display-line-numbers-mode))
 #+END_SRC
 
 Whitespace settings
@@ -329,7 +375,7 @@ Remap SPC SPC to M-x function
   (general-define-key
    :states '(normal visual)
    :prefix "SPC"
-    "SPC" 'execute-extended-command :which-key "M-x")
+    "SPC" '(execute-extended-command :which-key "M-x"))
 #+END_SRC
 
 Open different tools
@@ -340,6 +386,8 @@ Open different tools
     "g" 'magit-status
     "a" 'org-agenda
     "c" 'org-capture
+    "t" 'neotree-toggle
+    "u" 'undo-tree-visualize
     "e" 'flymake-show-buffer-diagnostics
     "E" 'flymake-show-project-diagnostics)
 #+END_SRC
@@ -356,6 +404,7 @@ Toggle settings
     :key "t"
     "d" 'corfu-popupinfo-toggle
     "T" 'modus-themes-toggle
+    "h" 'hl-line-mode
     "w" 'whitespace-mode
     "n" 'relative-line-numbers-toggle)
 #+END_SRC
@@ -379,7 +428,8 @@ General keybinds for major mode prefix
 ** Evil Mode Configuration
 #+BEGIN_SRC emacs-lisp
   (use-package evil
-    :custom (evil-undo-system 'undo-redo)
+    ;; :custom (evil-undo-system 'undo-redo)
+    :custom (evil-undo-system 'undo-tree)
     :init
     (setq evil-want-keybinding nil
           evil-want-C-u-scroll t
@@ -402,7 +452,6 @@ General keybinds for major mode prefix
 
   (use-package evil-collection
     :after evil
-    :ensure t
     :config
     (evil-collection-init))
 
@@ -414,6 +463,26 @@ General keybinds for major mode prefix
 
   (use-package evil-nerd-commenter
     :bind ("M-/" . evilnc-comment-or-uncomment-lines))
+
+  (use-package undo-tree
+  :defer t
+  :ensure t
+  :hook
+  (after-init . global-undo-tree-mode)
+  :init
+  (setq undo-tree-visualizer-timestamps t
+        undo-tree-visualizer-diff t
+        ;; Increase undo limits to avoid losing history due to Emacs' garbage collection.
+        ;; These values can be adjusted based on your needs.
+        ;; 10X bump of the undo limits to avoid issues with premature
+        ;; Emacs GC which truncates the undo history very aggressively.
+        undo-limit 800000                     ;; Limit for undo entries.
+        undo-strong-limit 12000000            ;; Strong limit for undo entries.
+        undo-outer-limit 120000000)           ;; Outer limit for undo entries.
+  :config
+  ;; Set the directory where `undo-tree' will save its history files.
+  ;; This keeps undo history across sessions, stored in a cache directory.
+  (setq undo-tree-history-directory-alist `(("." . ,(concat emacs-data-dir "/undo-tree")))))
 #+END_SRC
 *** Keybinds
 Set line movement in text mode so that it more vim-like
@@ -451,7 +520,8 @@ Set emacs UI defaults
 
 Install icons
 #+BEGIN_SRC emacs-lisp
-  (use-package all-the-icons)
+  ;; (use-package all-the-icons)
+  (use-package nerd-icons)
 #+END_SRC
 ** Modeline
 Display column number in modeline
@@ -522,7 +592,9 @@ Hide additiona minor modes in modeline under a button
                 ("C-j" . vertico-next))
     :init (vertico-mode))
 
-  (use-package consult)
+  (use-package consult
+    :init
+    (advice-add #'register-preview :override #'consult-register-window))
 
   (use-package marginalia
     :custom
@@ -531,11 +603,11 @@ Hide additiona minor modes in modeline under a button
     :init
     (marginalia-mode))
 
-  (use-package all-the-icons-completion
-    :after (marginalia all-the-icons)
-    :hook (marginalia-mode . all-the-icons-completion-marginalia-setup)
-    :init
-    (all-the-icons-completion-mode))
+  (use-package nerd-icons-completion
+    :after marginalia
+    :config
+    (nerd-icons-completion-mode)
+    (add-hook 'marginalia-mode-hook #'nerd-icons-completion-marginalia-setup))
 #+END_SRC
 
 Setup xref to use consult for finding definitions and usages and do not ask which identifier to select
@@ -624,30 +696,18 @@ Configure corfu with icons for inline code completion
     (add-hook 'completion-at-point-functions #'cape-file)
     (add-hook 'completion-at-point-functions #'cape-elisp-block))
 
-  (use-package kind-icon
-    :after corfu
-    :custom
-    (kind-icon-use-icons t)
-    ;; Have background color be the same as `corfu' face background
-    (kind-icon-default-face 'corfu-default)
-    ;; Use midpoint color between foreground and background colors ("blended")?
-    (kind-icon-blend-background nil)
-    (kind-icon-blend-frac 0.08)
-
-    ;; Use a different cache directory don't make a mess in my `user-emacs-directory'
-    (svg-lib-icons-dir (concat user-emacs-directory "cache/svg-lib"))
-    :config
-    (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter)) ;; Enable `kind-icon'
-
-  ;; Add hook to reset cache so the icon colors in completion popups match my theme
-  (add-hook 'modus-themes-after-load-theme-hook #'(lambda () (interactive) (kind-icon-reset-cache)))
+  (use-package nerd-icons-corfu
+    :init
+    (add-to-list 'corfu-margin-formatters #'nerd-icons-corfu-formatter))
 #+END_SRC
 
 Configure code snippets
 #+BEGIN_SRC emacs-lisp
-    (use-package yasnippet
-      :init (setq yas-snippet-dirs '(user-snippets-directory))
-      :config (yas-global-mode))
+  (use-package yasnippet
+    :init (setq yas-snippet-dirs '(user-snippets-directory))
+    :config (yas-global-mode))
+
+  (use-package yasnippet-snippets)
 #+END_SRC
 ** Git
 #+BEGIN_SRC emacs-lisp
@@ -767,38 +827,94 @@ Enable code formatting on all code files
     "q" 'dape-quit)
 #+END_SRC
 * Org Mode Configuration
-Beautify org-mode UI
 #+BEGIN_SRC emacs-lisp
-  (setq org-startup-folded t)
+  (setq org-startup-folded t
+        org-hide-emphasis-markers t
+        ;; org-use-sub-superscripts "{}" Turn this on if you're having issues when writing in snake_case
+        org-startup-with-inline-images t org-image-actual-width '(300))
 
-  (use-package org-modern
+  ;; Using jira style priorities
+  ;; (setq org-priority-highest 0
+  ;;       org-priority-lowest 4)
+
+  (defconst notes-directory "~/Documents/roam-notes"
+    "Directory where my org-roam notes are stored i.e. `org-roam-directory'")
+
+  (setq org-agenda-files `(,(concat notes-directory "/todos.org")))
+
+  (setq org-todo-keywords
+        '((sequence "TODO(!t)" "NEXT(n)"  "|" "DONE(d)")
+          (sequence "BLOCKED(b@/!)" "|" "CANCELLED(c@/!)")))
+
+  (use-package org-appear
+    :hook
+    (org-mode . org-appear-mode))
+
+  (use-package org-roam
+    :demand t ;; Ensure org-roam is always loaded
     :init
-    (setq
-     ;; Edit settings
-     org-auto-align-tags nil
-     org-tags-column 0
-     org-catch-invisible-edits 'show-and-error
-     org-special-ctrl-a/e t
-     org-insert-heading-respect-content t
-
-     ;; Org styling, hide markup etc.
-     org-hide-emphasis-markers t
-     org-pretty-entities t
-     org-ellipsis "…"
-
-     ;; Agenda styling
-     org-agenda-tags-column 0
-     org-agenda-time-grid
-     '((daily today require-timed)
-       (800 1000 1200 1400 1600 1800 2000)
-       " ┄┄┄┄┄ " "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄")
-     org-agenda-current-time-string
-     "◀── now ─────────────────────────────────────────────────")
+    (setq org-roam-v2-ack t) ;; Don't show v2 warnings
+    (setq org-roam-dailies-directory "diary/")
+    :custom
+    (org-roam-directory notes-directory)
+    (org-roam-completion-everywhere t)
+    (org-roam-capture-templates
+     '(("d" "default" plain
+        "%?"
+        :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org" "#+TITLE: ${title}\n")
+        :unnarrowed t)))
+    (org-roam-dailies-capture-templates
+     '(("n" "notes" plain  (file "~/Documents/roam-notes/templates/daily-notes.org")
+        :if-new (file "%<%d-%m-%Y>.org") :unnarrowed t)
+       ("e" "entry" entry "** %<%I:%M%p>: %?"
+        :if-new (file+head+olp "%<%d-%m-%Y>.org" "#+TITLE: Daily notes for: %<%d-%m-%Y>\n\n" ("Notes")))))
+    :bind (:map org-roam-dailies-map
+                ("D" ("capture-today" . org-roam-dailies-capture-today))
+                ("d" ("goto-today" . org-roam-dailies-goto-today))
+                ("Y" ("capture-yesterday" . org-roam-dailies-capture-yesterday))
+                ("y" ("goto-yesterday" . org-roam-dailies-goto-yesterday))
+                ("t" ("goto-tomorrow" . org-roam-dailies-goto-tomorrow))
+                ("T" ("capture-tomorrow" . org-roam-dailies-capture-tomorrow)))
     :config
-    (global-org-modern-mode))
+    (org-roam-db-autosync-enable)
+    (require 'org-roam-dailies)
+    (org-roam-db-autosync-mode))
+
+  (defun my/org-roam-copy-todo-to-today ()
+    (interactive)
+    (let ((org-refile-keep t) ;; Set this to nil to delete the original!
+          (org-roam-dailies-capture-templates
+           '(("t" "tasks" entry "%?"
+              :if-new (file+head+olp "%<%d-%m-%Y>.org" "#+TITLE: Daily notes for: %<%d-%m-%Y>\n\n" ("Completed")))))
+          (org-after-refile-insert-hook #'save-buffer)
+          today-file
+          pos)
+      (save-window-excursion
+        (org-roam-dailies--capture (current-time) t)
+        (setq today-file (buffer-file-name))
+        (setq pos (point)))
+
+      ;; Only refile if the target file is different than the current file
+      (unless (equal (file-truename today-file)
+                     (file-truename (buffer-file-name)))
+        (org-refile nil nil (list "Completed" today-file nil pos)))))
+
+  (add-to-list 'org-after-todo-state-change-hook
+               (lambda ()
+                 (when (equal org-state "DONE")
+                   (my/org-roam-copy-todo-to-today))))
+
 #+END_SRC
+
 *** Keybinds
 #+BEGIN_SRC emacs-lisp
+
+(defun my/capture-todo-task ()
+  (interactive)
+  (org-roam-capture- :node (org-roam-node-create)
+                     :templates '(("t" "todo" plain "* TODO %?"
+                                  :if-new (file+head+olp "todos.org" "#+TITLE: To-do List\n#+FILETAGS: agenda\n\n" ("Tasks"))))))
+
   (general-define-key
    :major-modes 'org-mode
    :states '(normal visual)
@@ -813,8 +929,17 @@ Beautify org-mode UI
       :states '(normal visual)
       :keymaps '(org-mode-map)
       "b" 'org-babel-execute-buffer
-      "r" 'org-babel-execute-src-block)
+      "e" 'org-babel-execute-src-block)
+
+  (create-leader-layer notes
+      :key "n"
+      "d" 'org-roam-dailies-map
+      "t" '(my/capture-todo-task :which-key "capture todo")
+      "l" '(org-roam-buffer-toggle :which-key "toggle links buffer")
+      "f" '(org-roam-node-find :which-key "find note")
+      "i" '(org-roam-node-insert :which-key "insert note"))
 #+END_SRC
+
 * Language Specific Configuration
 ** Emacs Lisp
 *** Keybinds
