@@ -828,116 +828,115 @@ Enable code formatting on all code files
 #+END_SRC
 * Org Mode Configuration
 #+BEGIN_SRC emacs-lisp
-  (setq org-startup-folded t
-        org-hide-emphasis-markers t
-        ;; org-use-sub-superscripts "{}" Turn this on if you're having issues when writing in snake_case
-        org-startup-with-inline-images t org-image-actual-width '(300))
+    (setq org-startup-folded t
+          org-hide-emphasis-markers t
+          ;; org-use-sub-superscripts "{}" Turn this on if you're having issues when writing in snake_case
+          org-startup-with-inline-images t org-image-actual-width '(300))
 
-  ;; Using jira style priorities
-  ;; (setq org-priority-highest 0
-  ;;       org-priority-lowest 4)
+    (defconst notes-directory "~/Documents/roam-notes"
+      "Directory where my org-roam notes are stored i.e. `org-roam-directory'")
 
-  (defconst notes-directory "~/Documents/roam-notes"
-    "Directory where my org-roam notes are stored i.e. `org-roam-directory'")
+    (setq org-agenda-files `(,(concat notes-directory "/todos.org")))
 
-  (setq org-agenda-files `(,(concat notes-directory "/todos.org")))
+    (setq org-todo-keywords
+          '((sequence "TODO(t!)" "NEXT(n)" "STARTED(s!)" "|" "DONE(d!)")
+            (sequence "BLOCKED(b@/!)" "|" "CANCELLED(c@/!)")))
 
-  (setq org-todo-keywords
-        '((sequence "TODO(!t)" "NEXT(n)"  "|" "DONE(d)")
-          (sequence "BLOCKED(b@/!)" "|" "CANCELLED(c@/!)")))
+    (use-package org-appear
+      :hook
+      (org-mode . org-appear-mode))
 
-  (use-package org-appear
-    :hook
-    (org-mode . org-appear-mode))
+    (defun my/daily-file-name ()
+      "%<%d-%m-%Y>.org")
 
-  (use-package org-roam
-    :demand t ;; Ensure org-roam is always loaded
-    :init
-    (setq org-roam-v2-ack t) ;; Don't show v2 warnings
-    (setq org-roam-dailies-directory "diary/")
-    :custom
-    (org-roam-directory notes-directory)
-    (org-roam-completion-everywhere t)
-    (org-roam-capture-templates
-     '(("d" "default" plain
-        "%?"
-        :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org" "#+TITLE: ${title}\n")
-        :unnarrowed t)))
-    (org-roam-dailies-capture-templates
-     '(("n" "notes" plain  (file "~/Documents/roam-notes/templates/daily-notes.org")
-        :if-new (file "%<%d-%m-%Y>.org") :unnarrowed t)
-       ("e" "entry" entry "** %<%I:%M%p>: %?"
-        :if-new (file+head+olp "%<%d-%m-%Y>.org" "#+TITLE: Daily notes for: %<%d-%m-%Y>\n\n" ("Notes")))))
-    :bind (:map org-roam-dailies-map
-                ("D" ("capture-today" . org-roam-dailies-capture-today))
-                ("d" ("goto-today" . org-roam-dailies-goto-today))
-                ("Y" ("capture-yesterday" . org-roam-dailies-capture-yesterday))
-                ("y" ("goto-yesterday" . org-roam-dailies-goto-yesterday))
-                ("t" ("goto-tomorrow" . org-roam-dailies-goto-tomorrow))
-                ("T" ("capture-tomorrow" . org-roam-dailies-capture-tomorrow)))
-    :config
-    (org-roam-db-autosync-enable)
-    (require 'org-roam-dailies)
-    (org-roam-db-autosync-mode))
+    (defun my/daily-file-template ()
+      "#+TITLE: Daily notes for: %<%d-%m-%Y>\n#+FILETAGS: daily\n* Notes\n* In progress\n* Completed")
 
-  (defun my/org-roam-copy-todo-to-today ()
-    (interactive)
-    (let ((org-refile-keep t) ;; Set this to nil to delete the original!
-          (org-roam-dailies-capture-templates
-           '(("t" "tasks" entry "%?"
-              :if-new (file+head+olp "%<%d-%m-%Y>.org" "#+TITLE: Daily notes for: %<%d-%m-%Y>\n\n" ("Completed")))))
-          (org-after-refile-insert-hook #'save-buffer)
-          today-file
-          pos)
-      (save-window-excursion
-        (org-roam-dailies--capture (current-time) t)
-        (setq today-file (buffer-file-name))
-        (setq pos (point)))
+    (use-package org-roam
+      :demand t ;; Ensure org-roam is always loaded
+      :init
+      (setq org-roam-v2-ack t) ;; Don't show v2 warnings
+      (setq org-roam-dailies-directory "diary/")
+      :custom
+      (org-roam-directory notes-directory)
+      (org-roam-completion-everywhere t)
+      (org-roam-capture-templates
+       '(("d" "default" plain
+          "%?"
+          :if-new (file+head "%<%Y%m%d%H%M%S>-${slug}.org" "#+TITLE: ${title}\n")
+          :unnarrowed t)))
+      (org-roam-dailies-capture-templates
+       '(("d" "daily" entry "** %<%I:%M%p>: %?"
+          :if-new (file+head+olp my/daily-file-name my/daily-file-template ("Notes")))))
+      :bind (:map org-roam-dailies-map
+                  ("D" ("capture-today" . org-roam-dailies-capture-today))
+                  ("d" ("goto-today" . org-roam-dailies-goto-today))
+                  ("Y" ("capture-yesterday" . org-roam-dailies-capture-yesterday))
+                  ("y" ("goto-yesterday" . org-roam-dailies-goto-yesterday))
+                  ("t" ("goto-tomorrow" . org-roam-dailies-goto-tomorrow))
+                  ("T" ("capture-tomorrow" . org-roam-dailies-capture-tomorrow)))
+      :config
+      (org-roam-db-autosync-enable)
+      (require 'org-roam-dailies)
+      (org-roam-db-autosync-mode))
 
-      ;; Only refile if the target file is different than the current file
-      (unless (equal (file-truename today-file)
-                     (file-truename (buffer-file-name)))
-        (org-refile nil nil (list "Completed" today-file nil pos)))))
+    (defun my/org-roam-copy-todo-done-to-today ()
+      (interactive)
+      (let ((org-refile-keep t) ;; Set this to nil to delete the original!
+            (org-roam-dailies-capture-templates
+             '(("t" "tasks" entry "%?"
+                :if-new (file+head+olp my/daily-file-name my/daily-file-template ("Completed")))))
+            (org-after-refile-insert-hook #'save-buffer)
+            today-file
+            pos)
+        (save-window-excursion
+          (org-roam-dailies--capture (current-time) t)
+          (setq today-file (buffer-file-name))
+          (setq pos (point)))
 
-  (add-to-list 'org-after-todo-state-change-hook
-               (lambda ()
-                 (when (equal org-state "DONE")
-                   (my/org-roam-copy-todo-to-today))))
+        ;; Only refile if the target file is different than the current file
+        (unless (equal (file-truename today-file)
+                       (file-truename (buffer-file-name)))
+          (org-refile nil nil (list "Completed" today-file nil pos)))))
+
+    (add-to-list 'org-after-todo-state-change-hook
+                 (lambda ()
+                   (when (equal org-state "DONE")
+                     (my/org-roam-copy-todo-done-to-today))))
 
 #+END_SRC
-
 *** Keybinds
 #+BEGIN_SRC emacs-lisp
 
-(defun my/capture-todo-task ()
-  (interactive)
-  (org-roam-capture- :node (org-roam-node-create)
-                     :templates '(("t" "todo" plain "* TODO %?"
-                                  :if-new (file+head+olp "todos.org" "#+TITLE: To-do List\n#+FILETAGS: agenda\n\n" ("Tasks"))))))
+  (defun my/capture-todo-task ()
+    (interactive)
+    (org-roam-capture- :node (org-roam-node-create)
+                       :templates '(("t" "todo" plain "* TODO %?"
+                                     :if-new (file+head+olp "todos.org" "#+TITLE: To-do List\n#+FILETAGS: agenda\n\n" ("Tasks"))))))
 
-  (general-define-key
-   :major-modes 'org-mode
-   :states '(normal visual)
-   "C-c C-t" 'org-todo
-   "C-c C-w" 'org-refile
-   "TAB" 'org-cycle
-   "RET" 'org-open-at-point
-   "-" 'org-cycle-list-bullet)
+    (general-define-key
+     :major-modes 'org-mode
+     :states '(normal visual)
+     "C-c C-t" 'org-todo
+     "C-c C-w" 'org-refile
+     "TAB" 'org-cycle
+     "RET" 'org-open-at-point
+     "-" 'org-cycle-list-bullet)
 
-  (create-leader-layer major-mode
-      :key "m"
-      :states '(normal visual)
-      :keymaps '(org-mode-map)
-      "b" 'org-babel-execute-buffer
-      "e" 'org-babel-execute-src-block)
+    (create-leader-layer major-mode
+        :key "m"
+        :states '(normal visual)
+        :keymaps '(org-mode-map)
+        "b" 'org-babel-execute-buffer
+        "e" 'org-babel-execute-src-block)
 
-  (create-leader-layer notes
-      :key "n"
-      "d" 'org-roam-dailies-map
-      "t" '(my/capture-todo-task :which-key "capture todo")
-      "l" '(org-roam-buffer-toggle :which-key "toggle links buffer")
-      "f" '(org-roam-node-find :which-key "find note")
-      "i" '(org-roam-node-insert :which-key "insert note"))
+    (create-leader-layer notes
+        :key "n"
+        "d" '(org-roam-dailies-map :which-key "dailies")
+        "t" '(my/capture-todo-task :which-key "capture todo")
+        "l" '(org-roam-buffer-toggle :which-key "toggle links buffer")
+        "f" '(org-roam-node-find :which-key "find note")
+        "i" '(org-roam-node-insert :which-key "insert note"))
 #+END_SRC
 
 * Language Specific Configuration
