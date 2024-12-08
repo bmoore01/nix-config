@@ -3,7 +3,7 @@
 # --------------------------------------------------------------
 {pkgs, ...}: {
   home.packages = with pkgs; [
-    (nerdfonts.override {fonts = ["Hack" "JetBrainsMono"];})
+    (nerdfonts.override {fonts = ["Hack" "JetBrainsMono" "FiraCode"];})
     emacs-all-the-icons-fonts
   ];
 

@@ -2,7 +2,7 @@
   nix = {
     settings = {
       trusted-users = ["root" "${username}"];
-      experimental-features = ["nix-command" "flakes" "repl-flake"];
+      experimental-features = ["nix-command" "flakes"];
       max-jobs = "auto";
 
       # Optimise storage

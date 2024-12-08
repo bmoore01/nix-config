@@ -2,8 +2,8 @@
   description = "Nix configurations for all my machines";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.05";
-    nixpkgs-darwin.url = "github:nixos/nixpkgs/nixpkgs-24.05-darwin";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
+    nixpkgs-darwin.url = "github:nixos/nixpkgs/nixpkgs-24.11-darwin";
 
     nix-darwin = {
       url = "github:lnl7/nix-darwin/master";
@@ -11,7 +11,7 @@
     };
 
     home-manager = {
-      url = "github:nix-community/home-manager/release-24.05";
+      url = "github:nix-community/home-manager/release-24.11";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -36,6 +36,10 @@
       url = "github:nix-community/emacs-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    zjstatus = {
+      url = "github:dj95/zjstatus";
+    };
   };
 
   outputs = {
@@ -46,6 +50,7 @@
     flake-parts,
     treefmt-nix,
     agenix,
+    zjstatus,
     ...
   } @ inputs: let
     secrets = builtins.fromJSON (builtins.readFile "${self}/secrets/secrets.json");
@@ -101,6 +106,9 @@
       flake = {
         overlays.default = inputs.nixpkgs.lib.composeManyExtensions [
           inputs.emacs-overlay.overlays.emacs
+          (final: prev: {
+            zjstatus = zjstatus.packages.${prev.system}.default;
+          })
         ];
 
         darwinConfigurations = let

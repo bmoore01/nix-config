@@ -10,6 +10,8 @@
     ../../modules/shared/home-manager/fzf
     ../../modules/shared/home-manager/tmux
     ../../modules/shared/home-manager/nvim
+    ../../modules/shared/home-manager/kitty
+    ../../modules/shared/home-manager/zellij
 
     # NixOS specific home-manager modules
     ../../modules/nixos/home-manager/hyprland
@@ -27,7 +29,6 @@
     spotify
 
     swaybg
-    mypaint
 
     jetbrains.idea-community-bin
 

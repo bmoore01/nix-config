@@ -5,6 +5,7 @@
 {
   pkgs,
   username,
+  secrets,
   ...
 }: rec {
   home = {
@@ -12,12 +13,13 @@
       if pkgs.stdenv.isDarwin
       then "/Users/${username}"
       else "/home/${username}";
-    stateVersion = "22.11";
+    stateVersion = "24.11";
 
     sessionVariables = with home; {
       WORKSPACE = "${homeDirectory}/workspace";
       PROJECTS = "${homeDirectory}/workspace/work/projects";
       SCRIPTS = "${homeDirectory}/workspace/work/scripts";
+      OPENAI_API_KEY = "${secrets.personal.openAiKey}";
     };
 
     packages = with pkgs; [
@@ -37,6 +39,8 @@
       glow # Markdown previewer
 
       git-crypt # Secret management in git
+
+      aider-chat # Ai assistant for coding
 
       # Nix developer tools
       direnv
