@@ -65,7 +65,7 @@
 
             datetime        "#[fg=$fg_muted,bold] {format} "
             datetime_format "%A, %-d %B, %Y ─ %-I:%M%p"
-            datetime_timezone "America/Edmonton"
+            datetime_timezone "Europe/Berlin"
           }
         }
         children

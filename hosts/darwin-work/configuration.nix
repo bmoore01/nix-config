@@ -39,10 +39,14 @@
   # Enable touch ID for sudo
   security.pam.enableSudoTouchIdAuth = true;
 
-  nix.gc.interval = {
-    Weekday = 5;
-    Hour = 17;
-    Minute = 0;
+  nix = {
+    gc.interval = {
+      Weekday = 5;
+      Hour = 17;
+      Minute = 0;
+    };
+    # This doesn't work on mac currently
+    auto-optomise-store = false;
   };
 
   system = {

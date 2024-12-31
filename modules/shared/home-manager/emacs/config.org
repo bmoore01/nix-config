@@ -255,6 +255,9 @@ Everything related to finding files/parts of a file
   (dired-listing-switches "-lah --group-directories-first")  ;; Display files in a human-readable format and group directories first.
   (dired-kill-when-opening-new-dired-buffer t))               ;; Close the previous buffer when opening a new `dired' instance.
 
+  (when (string= "darwin" system-type)
+    (setq dired-use-ls-dired nil))
+
   (use-package nerd-icons-dired
   :hook
   (dired-mode . nerd-icons-dired-mode))
