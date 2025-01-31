@@ -10,12 +10,7 @@ M.general = {
     ["<leader>h"] = { "<cmd> split<CR>", "Split window horizontally" },
     ["<leader>v"] = { "<cmd> vsplit<CR>", "Split window vertically", },
 
-
-    ["<A-b>"] = { function ()
-      print("It works!")
-    end},
-
-    ["<A-L>"] = {
+    ["<D-L>"] = {
       function()
         vim.lsp.buf.format { async = true }
       end,
@@ -27,13 +22,13 @@ M.general = {
 M.lspconfig = {
   plugin = true,
   n = {
-    ["<A-B>"] = {
+    ["<D-B>"] = {
       function()
         require("telescope.builtin").lsp_definitions()
       end,
       "LSP implementation",
     },
-    ["<A-b>"] = {
+    ["<D-b>"] = {
       function()
         require("telescope.builtin").lsp_references()
       end,
