@@ -7,9 +7,6 @@
     ../../modules/shared/home-manager/emacs
     ../../modules/shared/home-manager/tmux
     ../../modules/shared/home-manager/nvim
-    ../../modules/shared/home-manager/fzf
-    ../../modules/shared/home-manager/kitty
-    ../../modules/shared/home-manager/zellij
 
     # Darwin specific home-manager modules
     ../../modules/darwin/home-manager/git
